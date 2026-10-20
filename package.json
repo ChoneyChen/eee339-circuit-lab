@@ -1,0 +1,1 @@
+{"name":"eee339-circuit-lab","version":"1.0.0","private":true,"type":"module","description":"EEE339 中文课程精读与交互式 Verilog 实验室","scripts":{"dev":"python3 -m http.server 4173 --bind 127.0.0.1","test":"node --test tests/*.test.mjs","check":"node scripts/check-content.mjs"},"engines":{"node":">=20"}}
