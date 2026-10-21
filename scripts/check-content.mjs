@@ -4,7 +4,7 @@ import {lateLessons} from '../js/lessons-late.js';
 import {customLessons} from '../js/lessons-custom.js';
 import {simulate} from '../js/simulator.js';
 const lessons=[...new Map([...earlyLessons,...lateLessons,...customLessons].map(l=>[l.id,l])).values()].sort((a,b)=>a.id-b.id),ids=new Set(),sectionIds=new Set(),exerciseIds=new Set(),errors=[];
-let sectionCount=0,exerciseCount=0,codeCount=0,vectorCount=0,checkCount=0,chars=0;
+let sectionCount=0,exerciseCount=0,codeCount=0,vectorCount=0,checkCount=0,walkthroughCount=0,chars=0;
 assert.ok(Array.from({length:15},(_,i)=>i+1).every(id=>lessons.some(l=>l.id===id)),'Initial lecture slots 1–15 must be preserved');
 function check(condition,msg){if(!condition)errors.push(msg);}
 for(const l of lessons){
@@ -19,6 +19,11 @@ for(const l of lessons){
   check(typeof s.pages==='string'&&/\d/.test(s.pages),`${s.id} missing source page range`);
   check(s.body.length>=3&&s.body.join('').length>=180,`${s.id} insufficient reading detail`);
   check(s.pitfalls?.length>0,`${s.id} missing pitfalls`);
+  check(typeof s.brief==='string'&&s.brief.length>10,`${s.id} missing concise code brief`);
+  check(Array.isArray(s.walkthrough)&&s.walkthrough.length>=2&&s.walkthrough.length<=4,`${s.id} needs 2–4 code walkthrough steps`);
+  for(const step of s.walkthrough||[]){walkthroughCount++;check(typeof step.code==='string'&&step.code.trim().length>0&&s.code.includes(step.code),`${s.id} walkthrough must quote exact code`);check(step.explanation?.length>10,`${s.id} missing code explanation`);}
+  check(s.experiment?.action?.length>5&&s.experiment?.expected?.length>5,`${s.id} missing concrete code experiment`);
+
   check(s.check&&Number.isInteger(s.check.answer)&&s.check.answer>=0&&s.check.answer<s.check.options.length,`${s.id} invalid checkpoint`);checkCount++;
  }
  for(const e of l.exercises){exerciseCount++;
@@ -37,5 +42,5 @@ for(const l of lessons){
   }
  }
 }
-console.log(JSON.stringify({lectures:lessons.length,available:lessons.filter(l=>l.available).length,sections:sectionCount,inlineChecks:checkCount,exercises:exerciseCount,codeExercises:codeCount,testVectors:vectorCount,chineseReadingCharacters:chars},null,2));
+console.log(JSON.stringify({lectures:lessons.length,available:lessons.filter(l=>l.available).length,sections:sectionCount,inlineChecks:checkCount,walkthroughSteps:walkthroughCount,exercises:exerciseCount,codeExercises:codeCount,testVectors:vectorCount,chineseReadingCharacters:chars},null,2));
 if(errors.length){console.error(errors.join('\n'));process.exitCode=1;}else console.log('PASS: schema, unique IDs, source anchors, knowledge links, reference solutions and unfinished starters.');

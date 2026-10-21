@@ -14,6 +14,16 @@
 
 先完整阅读 `Lecture10.pdf`。不要根据前后课程猜测缺失内容。把完整课程对象写入 `customLessons`，设置 `id:10` 和 `available:true`。填入原始物理页码和实际学习目标。建议每讲至少六个详细知识单元、六道相关练习，并覆盖每一页有教学意义的内容。第 12–13 与 14–15 讲目前的拆分是学习单元拆分，不声称原件有独立课次边界。
 
+## 代码与练习连学规则
+
+主界面按 `code → brief → walkthrough → 就地练习` 展示；不展示原来的长段落 `body`。`body` 保留用于来源存档和搜索。
+
+- 每节必须有真实 Verilog 代码；时序模型、仿真 testbench 和 RTL 片段要明确其范围，不能把数学伪代码标成 Verilog。
+- `brief` 用一句话交代代码目标；`walkthrough` 为 2–4 条逐行说明，`code` 字段必须是示例代码中的精确非空子串，界面据此给出行号。
+- `experiment` 给出一个具体输入、时钟或代码改动，以及准确的预期行为。
+- 当前节的 `exercises` 按 `sectionId` 直接嵌在讲解下方；使用稳定 ID，共享原题库的草稿、作答记录和错题状态。
+- 中英术语由 `js/terminology.js` 统一标注，手工已有英文会保留；不要把注释翻译函数用于可执行代码。
+
 ## 课程对象
 
 ```js
@@ -28,7 +38,13 @@
   objectives: ['可检验的学习目标'],
   sections: [{
     id: 'l10-s1', title: '具体知识点', pages: '3–5',
-    body: ['背景与动机', '推导与代码语义', '硬件映射与边界'],
+    body: ['原课件背景存档', '详细推导存档', '硬件映射存档'],
+    brief: '这段代码实现什么，用一句话说明',
+    walkthrough: [
+      {code:'来自下方 code 的精确子串', explanation:'对应这行的简短解释，重要术语附英文'},
+      {code:'另一条精确代码子串', explanation:'说明输入变化和硬件行为'}
+    ],
+    experiment: {action:'具体修改一处代码或输入', expected:'预期输出或行为'},
     code: '正确的 Verilog 示例',
     hardware: '实际描述哪些门、连线或存储元件',
     pitfalls: ['可复现的常见错误'],
@@ -46,7 +62,7 @@
 所有习题必须有稳定 `id`、`title`、`sectionId`、`prompt`、`difficulty`（1–3）、`explanation`、`hints`。
 
 - `type:'choice'`：`options` 数组和从零开始的 `answer` 索引。
-- `type:'fill'`：`starter` 中用 `___` 标出空白；`accepted` 列出可接受的关键词/代码片段，`solution` 是完整讲解答案。多个空若输入同一运算符，要在题意明确说明。判定忽略空白和最后一个分号，保持大小写与运算符语义。
+- `type:'fill'`：`starter` 中用 `___` 标出空白；`accepted` 列出可接受的关键词/代码片段，`solution` 是完整讲解答案。多个空若输入同一运算符，要在题意明确说明。判定比较词法 token，忽略 token 之间的空白和最后一个分号，保持大小写与运算符语义；`end module` 不会误判为 `endmodule`，`< =` 不会误判为 `<=`。
 - `type:'code'` 或 `type:'debug'`：目前可自动执行的题设置 `engine:'comb'`；提供 `starter`、`solution`、`inputs`、`outputs`、`vectors`。
 
 ```js

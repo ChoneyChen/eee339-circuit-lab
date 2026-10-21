@@ -40,6 +40,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "综合解释可综合描述，技术映射选用目标库中的具体逻辑单元。"
+        },
+        "brief": "这段 Verilog 用连续赋值（continuous assignment）把 data 和 enable 接成一条可开关的数据通路。",
+        "walkthrough": [
+          {
+            "code": "input data, enable;",
+            "explanation": "两个一位输入端口（input ports）分别接数据和使能；它们是电路线上的电平，不是依次传入的软件参数。"
+          },
+          {
+            "code": "assign out = data & enable;",
+            "explanation": "按位与（bitwise AND）让 enable=0 时输出恒为 0，enable=1 时输出跟随 data；这里没有保存旧值的寄存器（register）。"
+          }
+        ],
+        "experiment": {
+          "action": "固定 data=1，把 enable 从 0 改成 1，再保持 enable=1 将 data 改成 0。",
+          "expected": "out 依次为 0、1、0；输出只由当前输入决定，这就是组合逻辑（combinational logic）。"
         }
       },
       {
@@ -66,6 +81,21 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "2 个二值输入共有 2²=4 种情况，真值表可以穷尽检查。"
+        },
+        "brief": "把 assign 表达式、真值表（truth table）和与门（AND gate）三种表示逐一对应起来。",
+        "walkthrough": [
+          {
+            "code": "module and_view (a, b, y);",
+            "explanation": "模块（module）把 a、b、y 封装为外部连接点；名字 and_view 帮助阅读，实际功能仍由模块内的赋值决定。"
+          },
+          {
+            "code": "assign y = a & b;",
+            "explanation": "a 与 b 必须同时为 1，y 才是 1；连续赋值（continuous assignment）将这条真值表规则直接写成逻辑表达式。"
+          }
+        ],
+        "experiment": {
+          "action": "按 a,b=00、01、10、11 四种组合逐一代入表达式。",
+          "expected": "y 依次为 0、0、0、1；四行穷举（exhaustive test）就覆盖这个二值二输入函数。"
         }
       },
       {
@@ -92,6 +122,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "有限测试只对已检查的行为提供证据；本例应补齐其余三个输入组合。"
+        },
+        "brief": "围绕一行 assign 设计测试向量（test vectors），区分检查代码行为与综合得到硬件。",
+        "walkthrough": [
+          {
+            "code": "assign out = data & enable;",
+            "explanation": "这一行是设计逻辑（design logic）：它描述与门的输入输出关系，综合（synthesis）可以据此推导硬件。"
+          },
+          {
+            "code": "// (0,0)->0 (1,0)->0 (0,1)->0 (1,1)->1",
+            "explanation": "这四组是输入与期望输出（expected outputs），属于验证规格；它们不会因为写在注释中就自动产生测试激励。"
+          }
+        ],
+        "experiment": {
+          "action": "把 & 错改成 |，先检查输入 00，再检查输入 10。",
+          "expected": "00 仍输出 0，无法识别错误；10 会输出 1 而期望为 0，因此成为反例（counterexample）。"
         }
       },
       {
@@ -118,6 +163,25 @@ export const earlyLessons = [
           ],
           "answer": 2,
           "explanation": "Verilog 门原语把输出放在端口列表首位。"
+        },
+        "brief": "用门原语（gate primitives）把 a、b 两条数据支路接成二选一多路选择器（multiplexer）。",
+        "walkthrough": [
+          {
+            "code": "not u0 (ns, s);",
+            "explanation": "not 原语的第一个端口是输出（output）：ns 得到 s 的反相，为选择 a 的支路提供互补使能。"
+          },
+          {
+            "code": "and u1 (left, a, ns);\n  and u2 (right, b, s);",
+            "explanation": "两个与门（AND gates）同时存在：s=0 只放行 a，s=1 只放行 b；实例顺序不代表执行先后。"
+          },
+          {
+            "code": "or u3 (y, left, right);",
+            "explanation": "或门（OR gate）合并两条互斥支路，使 y 等于被选中的输入；left、right 是实际中间连线（nets）。"
+          }
+        ],
+        "experiment": {
+          "action": "设 a=1、b=0，分别令 s=0 和 s=1，沿 ns、left、right 追踪电平。",
+          "expected": "s=0 时 ns=1、left=1、right=0、y=1；s=1 时 ns=0、left=0、right=0、y=0。"
         }
       },
       {
@@ -144,6 +208,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "代入后 (x1&0)|(~0&x3)=x3。"
+        },
+        "brief": "从一条布尔表达式（Boolean expression）读出选择条件，识别 x2 控制的二选一电路。",
+        "walkthrough": [
+          {
+            "code": "input x1, x2, x3;",
+            "explanation": "三个一位输入（one-bit inputs）作用不同：x1、x3 提供数据，x2 决定哪条数据支路能够传到输出。"
+          },
+          {
+            "code": "assign f = (x1 & x2) | (~x2 & x3);",
+            "explanation": "x2=1 时第一项保留 x1，x2=0 时第二项保留 x3；~ 是按位取反（bitwise NOT），两支路互补。"
+          }
+        ],
+        "experiment": {
+          "action": "设 x1=1、x3=0，将 x2 从 0 改成 1，再交换 x1、x3。",
+          "expected": "最初 f 从 0 变为 1；交换数据后 f 从 1 变为 0，验证 x2 选择的是哪条输入。"
         }
       },
       {
@@ -170,6 +249,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "硬件由触发方式、分支覆盖和数据依赖决定，不由 reg 名称单独决定。"
+        },
+        "brief": "用完整 if-else 在组合过程（combinational process）中描述同一个二选一电路。",
+        "walkthrough": [
+          {
+            "code": "output reg y;",
+            "explanation": "reg 表示 y 可被过程赋值（procedural assignment），仅凭这个关键字不能断言综合后存在寄存器（register）。"
+          },
+          {
+            "code": "always @(*) begin",
+            "explanation": "通配敏感列表（wildcard sensitivity list）包含过程读取的信号；a、b 或 s 变化时重新计算组合输出。"
+          },
+          {
+            "code": "if (s) y = b;\n    else y = a;",
+            "explanation": "两条分支覆盖 s 的二值情况，且每条都给 y 赋值；因此输出无需记住先前值，形成多路选择器（MUX）。"
+          }
+        ],
+        "experiment": {
+          "action": "设 a=0、b=1、s=1 得到 y=1，然后删除 else 分支并将 s 改为 0。",
+          "expected": "完整代码应输出 a=0；删去 else 后该路径未赋值，会保留旧 y，产生锁存器（latch）风险。"
         }
       },
       {
@@ -196,6 +294,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "s=0 应选 a=1，但错误公式变成 0。"
+        },
+        "brief": "对比错误与修正的选择表达式，用反例（counterexample）定位选择条件接错的位置。",
+        "walkthrough": [
+          {
+            "code": "assign y = (a & s) | (b & s);",
+            "explanation": "错误式的两支路都由 s 使能；s=0 时无论 a、b 为何输出都为 0，s=1 时则得到 a|b。"
+          },
+          {
+            "code": "assign y = (a & ~s) | (b & s);",
+            "explanation": "修正式让两支路使用互补选择条件（complementary selects）：s=0 取 a，s=1 取 b。两段是对照，不能同时驱动同一个 y。"
+          }
+        ],
+        "experiment": {
+          "action": "分别代入 a=1、b=0、s=0，并对照两条表达式的左右支路。",
+          "expected": "错误式给 0，修正式给 1；反例直接指向 a 支路应使用 ~s，而非改变输出端口或 b 支路。"
         }
       }
     ],
@@ -684,6 +797,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "data_2 以字母开始且后续字符合法；module 是保留字。"
+        },
+        "brief": "逐条确认循环体（loop body）的边界，理解 begin/end 比缩进更能决定哪些赋值会重复。",
+        "walkthrough": [
+          {
+            "code": "for (k = 0; k < n-1; k = k+1)\n  Q[k] <= Q[k+1];",
+            "explanation": "没有 begin/end 时只有紧邻的一条语句属于 for；k 从 0 到 n-2，每次调度 Q[k] 接收下一位的旧值。"
+          },
+          {
+            "code": "Q[n-1] <= w;",
+            "explanation": "末位赋值（assignment）在循环后执行一次，把 w 接入最高位；视觉缩进无法把它改成循环内部语句。"
+          },
+          {
+            "code": "Q[k] = 0;\n  R[k] = 1;",
+            "explanation": "第二段用 begin/end 把两条阻塞赋值（blocking assignments）合为语句块，所以每次迭代同时处理同一 k 的 Q 和 R。"
+          }
+        ],
+        "experiment": {
+          "action": "设 n=4，手动列出第一段循环每次访问的 Q 下标，再看最后一条赋值。",
+          "expected": "循环依次处理 Q[0]、Q[1]、Q[2]；Q[3] 只由循环外的 Q[n-1]<=w 处理。"
         }
       },
       {
@@ -695,7 +827,7 @@ export const earlyLessons = [
           "第 9 页用断开的开关说明 Z 的直觉：没有驱动器接入时，节点悬空。一个反相器看到 Z 输入通常无法知道输出应为 0 还是 1，因此仿真得到 X。第 10 页的四态门表还说明未知值未必总让整个结果未知，例如 0&X=0、1|X=1，因为确定的控制值已经决定输出。",
           "四态是仿真建模能力，不是说芯片有一个稳定的“X 电平”。真实电路中的浮空、冲突、上电状态和亚稳态需要从电气与时序角度处理。网页的可执行组合判题只针对二值端口，四态题在此用真值推演来学习，不将其伪装成完整四态仿真。"
         ],
-        "code": "// 四态推演（此处是讲解示例）\n// 1'b0 & 1'bx -> 0\n// 1'b1 | 1'bx -> 1\n// ~1'bz       -> x\n// 1'b1 ^ 1'bx -> x",
+        "code": "// 四态推演（此处是讲解示例）\n// 1'b0 & 1'bx -> 0\n// 1'b1 | 1'bx -> 1\n// ~1'bz       -> x\n// 1'b1 ^ 1'bx -> x\nwire zero_known = 1'b0 & 1'bx;\nwire one_known = 1'b1 | 1'bx;\nwire inverted_z = ~1'bz;\nwire unknown_xor = 1'b1 ^ 1'bx;",
         "hardware": "X 是诊断信息，Z 是驱动状态；普通逻辑门通常将高阻输入视作不能确定的逻辑值。",
         "pitfalls": [
           "把 X 当作“随机生成一个 0 或 1”。",
@@ -710,6 +842,25 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "与门中 0 是控制值，另一输入为何都不能令输出为 1。"
+        },
+        "brief": "用实际 Verilog 表达式检查未知值（unknown，X）与高阻态（high impedance，Z）的传播。",
+        "walkthrough": [
+          {
+            "code": "wire zero_known = 1'b0 & 1'bx;",
+            "explanation": "0 是与运算的控制值（controlling value），另一输入即使未知也不能把输出变成 1，因此 zero_known 确定为 0。"
+          },
+          {
+            "code": "wire one_known = 1'b1 | 1'bx;",
+            "explanation": "1 是或运算的控制值（controlling value），所以 one_known 确定为 1；X 并非在所有运算中都使结果未知。"
+          },
+          {
+            "code": "wire inverted_z = ~1'bz;\nwire unknown_xor = 1'b1 ^ 1'bx;",
+            "explanation": "Z 表示未主动驱动，取反无法确定逻辑值；异或（XOR）需要知道两个输入，故这两个结果都是 X。"
+          }
+        ],
+        "experiment": {
+          "action": "把 zero_known 的 1'b0 改成 1'b1，再把 one_known 的 1'b1 改成 1'b0。",
+          "expected": "原来确定的 0 和 1 都变为 X；此处需四态仿真器（four-state simulator），网页二值执行器不模拟 X/Z。"
         }
       },
       {
@@ -736,6 +887,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "Z 表示该驱动未参与，确定的 1 驱动决定节点值。"
+        },
+        "brief": "用两条三态连续赋值（tri-state assignments）观察同一总线的多个驱动如何解析。",
+        "walkthrough": [
+          {
+            "code": "tri bus;",
+            "explanation": "tri 声明可解析多个驱动的线网（resolved net）；它描述共享导线，不会替你安排哪个设备取得总线使用权。"
+          },
+          {
+            "code": "assign bus = en_a ? a : 1'bz;",
+            "explanation": "en_a=1 时 A 驱动数据 a，en_a=0 时释放为高阻态（high impedance）；释放导线不等于向总线输出 0。"
+          },
+          {
+            "code": "assign bus = en_b ? b : 1'bz;",
+            "explanation": "B 同样独立驱动 bus；若双方同强度驱动相反值，四态解析（resolution）得到 X，需要使能协议避免争用。"
+          }
+        ],
+        "experiment": {
+          "action": "设 a=1、b=0，依次取 en_a,en_b=00、10、01、11。",
+          "expected": "bus 依次为 Z、1、0、X；最后一组是总线争用（bus contention），不是正常的逻辑选择。"
         }
       },
       {
@@ -747,7 +917,7 @@ export const earlyLessons = [
           "下划线仅用于分组可读性，8'b0101_1101 与 8'b01011101 完全相同。对课件中的无符号带尺寸常量，尺寸比数字长且最高位是 0/1 时补零；若左端写 X/Z，通常按 X/Z 扩展。注意这条规则针对这里的常量表示，不要推广成“所有 signed 信号赋值也一律补零”。",
           "无尺寸十进制常量如 10 通常至少 32 位，参与表达式时可能影响宽度与符号。声明 4 位输出再接一个更宽的结果，会保留低位并丢弃高位；这不是编译器替你保留进位。初学时显式写尺寸，算术时显式扩宽，能避免很多悄悄发生的截断。"
         ],
-        "code": "// 数值相同，表示尺寸不同\n// 4'd3    -> 0011\n// 8'hA    -> 00001010\n// 5'b111  -> 00111\n// 8'bx1101 -> xxxx1101\n// 4'b1111 + 4'b0001 的完整数学结果需要 5 位",
+        "code": "// 数值相同，表示尺寸不同\n// 4'd3    -> 0011\n// 8'hA    -> 00001010\n// 5'b111  -> 00111\n// 8'bx1101 -> xxxx1101\n// 4'b1111 + 4'b0001 的完整数学结果需要 5 位\nwire [3:0] three = 4'd3;\nwire [7:0] hex_a = 8'hA;\nwire [4:0] padded = 5'b111;\nwire [7:0] partly_unknown = 8'bx1101;\nwire [4:0] full_sum = {1'b0, 4'b1111} + {1'b0, 4'b0001};",
         "hardware": "位宽决定连线数量；截断相当于没有连接高位，扩展相当于为新增位补入明确的电平或符号。",
         "pitfalls": [
           "把 8'hA 读成八个十六进制位。",
@@ -762,6 +932,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "8 指八位，数值 A=10，因此左侧补四个 0。"
+        },
+        "brief": "把尺寸常量（sized literals）写进线网声明，逐位检查补零、补 X 与结果位宽。",
+        "walkthrough": [
+          {
+            "code": "wire [3:0] three = 4'd3;\nwire [7:0] hex_a = 8'hA;",
+            "explanation": "常量前的 4、8 指定位宽（bit width），d 和 h 指定十进制与十六进制；数值分别展开为 0011 和 00001010。"
+          },
+          {
+            "code": "wire [4:0] padded = 5'b111;\nwire [7:0] partly_unknown = 8'bx1101;",
+            "explanation": "普通无符号数缺位时补 0，所以 padded=00111；字面量最高位为 X 时向左补 X，得到 xxxx1101。"
+          },
+          {
+            "code": "wire [4:0] full_sum = {1'b0, 4'b1111} + {1'b0, 4'b0001};",
+            "explanation": "先拼接零（zero extension）把两个操作数明确扩为 5 位，才可直观看到 15+1 的完整结果 10000。"
+          }
+        ],
+        "experiment": {
+          "action": "把 full_sum 的目标声明改成 [3:0]，仍计算 15+1；比较五位和四位结果。",
+          "expected": "五位结果为 10000，四位目标只保留低四位 0000；这说明截断（truncation）会丢弃进位。"
         }
       },
       {
@@ -788,6 +977,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "范围两端都包括，15−12+1=4。"
+        },
+        "brief": "从 wire、tri 声明和驱动表达式区分一位控制线、八位数据总线与共享总线。",
+        "walkthrough": [
+          {
+            "code": "wire ready;\nwire [7:0] data;\ntri [7:0] shared_bus;",
+            "explanation": "ready 是一位线网（net），data 和 shared_bus 各为八位；tri 允许共享驱动的意图，但此处尚未接任何驱动源。"
+          },
+          {
+            "code": "assign ready = enable & valid;",
+            "explanation": "ready 的唯一连续驱动（continuous driver）要求 enable、valid 同为 1；修改变量声明不能替代这条逻辑关系。"
+          },
+          {
+            "code": "assign data = source;",
+            "explanation": "这条连续赋值把 source 接到 data 总线；需要检查两边位宽（bit width），过宽会截断，过窄可能扩展。"
+          }
+        ],
+        "experiment": {
+          "action": "令 enable=1、valid=0、source=8'hA5，再仅把 valid 改成 1。",
+          "expected": "data 始终为 A5，ready 从 0 变为 1；数据与控制各由自己的驱动表达式决定。"
         }
       },
       {
@@ -814,6 +1022,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "本课传统 Verilog 中 integer 为有符号 32 位变量。"
+        },
+        "brief": "读取声明与赋值上下文，区分 Verilog 变量（variable）和实际寄存器（register）。",
+        "walkthrough": [
+          {
+            "code": "reg [2:0] Count;",
+            "explanation": "Count 是三位过程变量（procedural variable），可表示 0 到 7；声明本身没有时钟或保持条件，尚不能确定存储硬件。"
+          },
+          {
+            "code": "integer k;",
+            "explanation": "integer 是有符号整数（signed integer），常作循环索引；综合后的资源取决于它如何参与表达式，而非变量名 k。"
+          },
+          {
+            "code": "if (s) y = a;\n  else y = b;",
+            "explanation": "完整的组合分支让 y 始终由当前输入决定，即使 y 声明为 reg，也能综合成多路选择器（MUX）而非触发器。"
+          }
+        ],
+        "experiment": {
+          "action": "保持组合块完整，设 a=1、b=0，分别取 s=1、s=0，检查 y 是否需要旧值。",
+          "expected": "y 分别为 1、0，不需要历史；若用于独立模块，应另外声明输入 a、b、s 和过程变量 y。"
         }
       },
       {
@@ -840,6 +1067,25 @@ export const earlyLessons = [
           ],
           "answer": 2,
           "explanation": "数组每个元素均由前面的 [7:0] 规定为八位。"
+        },
+        "brief": "从 reg [7:0] R [3:0] 的两组下标定位一个字（word）和字内的一位（bit）。",
+        "walkthrough": [
+          {
+            "code": "reg [7:0] R [3:0];",
+            "explanation": "变量名左侧 [7:0] 定义每个字八位，右侧 [3:0] 定义四个元素；它不是一个只含四位的向量（vector）。"
+          },
+          {
+            "code": "R[3][7]",
+            "explanation": "第一个索引选择地址为 3 的字，第二个索引再取该字第 7 位；先地址（address）后位号，次序不能交换。"
+          },
+          {
+            "code": "R[3] = 8'hA5;",
+            "explanation": "这是过程赋值（procedural assignment）示意，须放在 initial 或 always 的合法位置；写入 A5 会同时设置该字的八个位。"
+          }
+        ],
+        "experiment": {
+          "action": "在合法过程块中执行 R[3]=8'hA5，随后读取 R[3][7] 与 R[3][0]。",
+          "expected": "A5 的二进制为 10100101，两个被读取的位均为 1；R[0]、R[1]、R[2] 不会被这条赋值一起改写。"
         }
       },
       {
@@ -866,6 +1112,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "最大值 15+15+1=31，需要五位二进制表示。"
+        },
+        "brief": "先把固定四位加法器（adder）的接口、扩展位和进位看清，再准备推广为参数化尺寸。",
+        "walkthrough": [
+          {
+            "code": "input [3:0] X, Y;\n  input carryin;",
+            "explanation": "X、Y 各为四位操作数，carryin 是一位输入进位（carry-in）；总和最大为 15+15+1=31，需要五位结果。"
+          },
+          {
+            "code": "output [4:0] S;",
+            "explanation": "S 的五位包含低四位和最高进位（carry-out）；若只保留 [3:0]，数值溢出时就无法从接口读到完整结果。"
+          },
+          {
+            "code": "assign S = {1'b0, X} + {1'b0, Y} + carryin;",
+            "explanation": "两个拼接（concatenations）先把 X、Y 扩到五位后相加；这段是固定 n=4 示例，尚未声明 parameter。"
+          }
+        ],
+        "experiment": {
+          "action": "设 X=15、Y=15、carryin=1，计算 S，再设 carryin=0 比较差值。",
+          "expected": "S 从 11111（31）变为 11110（30）；完整五位结果保留进位，后续参数化时应同步修改操作数和结果范围。"
         }
       }
     ],
@@ -1244,6 +1509,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "完整结果为 10000，低四位是 0000；进位需要额外位保存。"
+        },
+        "brief": "通过零扩展（zero extension）保留四位无符号加法的完整五位结果。",
+        "walkthrough": [
+          {
+            "code": "input [3:0] a, b;",
+            "explanation": "a、b 都是四位无符号输入（unsigned inputs），各自范围是 0 到 15；相加的完整数值最大为 30。"
+          },
+          {
+            "code": "assign sum = {1'b0, a} + {1'b0, b};",
+            "explanation": "在每个操作数左侧拼接 0，使加法明确按五位数据进行；sum[4] 就能保留超出四位范围的进位（carry）。"
+          }
+        ],
+        "experiment": {
+          "action": "依次代入 a,b=7,1 和 15,1，观察 sum 的最高位。",
+          "expected": "结果为 01000 和 10000；只有第二组 sum[4]=1，低四位归零仍不代表完整结果为零。"
         }
       },
       {
@@ -1270,6 +1550,25 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "两位不同输出 1，相同输出 0，逐位得到 0110。"
+        },
+        "brief": "将向量逐位对齐，分别预测按位与、或、异或及同或（bitwise operators）的结果。",
+        "walkthrough": [
+          {
+            "code": "assign both = A & B;",
+            "explanation": "按位与（bitwise AND）逐列处理对应位；A=1010、B=1100 时只有最高位同为 1，因此得到 1000。"
+          },
+          {
+            "code": "assign either = A | B;    // 1110\nassign different = A ^ B; // 0110",
+            "explanation": "按位或（OR）保留任一路的 1 得 1110，按位异或（XOR）只标记两输入不同的位，得到 0110。"
+          },
+          {
+            "code": "assign same = ~(A ^ B);",
+            "explanation": "先用 XOR 找不同位再按位反相，四位结果 1001 标出相同位；这是逐位相等标记，不是一个整体相等位。"
+          }
+        ],
+        "experiment": {
+          "action": "把 B 改为与 A 相同的 1010，再计算 different 和 same。",
+          "expected": "different=0000，same=1111；若期望得到一位整体相等结果，应另用相等比较（equality）运算。"
         }
       },
       {
@@ -1281,7 +1580,7 @@ export const earlyLessons = [
           "相同输入做按位 & 则得到 0000。这是非常常见的代码错误：想检测两个条件都成立，应考虑逻辑与；想对数据总线逐位筛选，应使用按位与。不要靠输出位宽截断来掩盖运算类别写错，因为恰好通过某组输入不说明语义相同。",
           "四态参与整体真假的推演也要谨慎：若一个向量已含确定的 1，整体可判断为真；若没有确定 1 却含 X/Z，则真假可能未知。这里可执行题采用二值输入，把四态边界留在概念练习中，避免浏览器有限子集给出过度承诺。"
         ],
-        "code": "// 二值对比：A=4'b0010, B=4'b0100\n// A & B  -> 4'b0000\n// A && B -> 1'b1\n// !A     -> 1'b0\n// ~A     -> 4'b1101",
+        "code": "// 二值对比：A=4'b0010, B=4'b0100\n// A & B  -> 4'b0000\n// A && B -> 1'b1\n// !A     -> 1'b0\n// ~A     -> 4'b1101\nwire [3:0] A = 4'b0010, B = 4'b0100;\nwire [3:0] bit_and = A & B;\nwire logic_and = A && B;\nwire logic_not = !A;\nwire [3:0] bit_not = ~A;",
         "hardware": "按位 & 是四组门；整体真假判断需要先归并各向量，再形成一个逻辑结果。",
         "pitfalls": [
           "用 && 做四位掩码，结果只剩一位真假。",
@@ -1296,6 +1595,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "两个向量都非零，因此都为真，逻辑与返回一位 1。"
+        },
+        "brief": "对同一组向量同时使用逻辑运算（logical operators）和按位运算，比较结果宽度与含义。",
+        "walkthrough": [
+          {
+            "code": "wire [3:0] A = 4'b0010, B = 4'b0100;",
+            "explanation": "A 和 B 各含一个 1，所以作为整体真假条件（Boolean conditions）时两者都为真；置 1 的位置却不相同。"
+          },
+          {
+            "code": "wire [3:0] bit_and = A & B;\nwire logic_and = A && B;",
+            "explanation": "单个 & 对应位相与得到四位 0000；双 && 先判断两个向量是否非零，再给一位真值 1。"
+          },
+          {
+            "code": "wire logic_not = !A;\nwire [3:0] bit_not = ~A;",
+            "explanation": "! 是逻辑非（logical NOT），非零 A 得到一位 0；~ 是按位非（bitwise NOT），把 0010 逐位翻为 1101。"
+          }
+        ],
+        "experiment": {
+          "action": "把 B 从 0100 改成 0000，保留 A=0010，分别计算 & 和 &&。",
+          "expected": "bit_and 仍为四位 0000，logic_and 从 1 变为 0；结果数值可能相同，但两种运算的位宽和语义仍不同。"
         }
       },
       {
@@ -1322,6 +1640,25 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "有两个 1，1^1=0；输出反映奇偶性而不是计数。"
+        },
+        "brief": "把单个向量送入归约运算（reduction），用一位输出回答任一位、全部位与奇偶性问题。",
+        "walkthrough": [
+          {
+            "code": "assign any_one = |A;\nassign all_one = &A;",
+            "explanation": "一元 | 将所有位相或，只要 A 中有 1 就输出 1；一元 & 只有所有位为 1 才输出 1，结果均为一位。"
+          },
+          {
+            "code": "assign parity = ^A;",
+            "explanation": "归约异或（reduction XOR）把所有位合并，A 内 1 的个数为奇数时输出 1，为偶数时输出 0。"
+          },
+          {
+            "code": "assign parity4 = A[0] ^ A[1] ^ A[2] ^ A[3];",
+            "explanation": "四位展开式显式列出归约的输入节点；当 A 正好四位时，它与 ^A 等价，可用来检查是否漏算某一位。"
+          }
+        ],
+        "experiment": {
+          "action": "取 A=1011，再翻转最低位得到 1010，比较三个归约输出。",
+          "expected": "两次 any_one 都为 1、all_one 都为 0；parity 从 1 变为 0，因为 1 的个数由三个变成两个。"
         }
       },
       {
@@ -1333,7 +1670,7 @@ export const earlyLessons = [
           "==、!= 比较数据值；若未知位使结果无法确定，会返回 X。===、!== 把 X 和 Z 也作为可逐位匹配的状态，结果总是确定的 0 或 1，适合测试平台中检查未知值。例如 101X === 101X 为 1，而 101X == 101X 为 X。",
           "课件第 12 页的“有未指定位就模糊”需结合第 13 页补充：若某个确定的位已经足以证明不相等，== 仍可返回 0。例如 1100 与 1Z10 在某个已知位确定冲突，因此不是必然 X。不要把 === 当作能在真实硬件中检测“X 电平”的通用电路。"
         ],
-        "code": "// 四态推演，不属于网页二值执行器\n// 4'b101x ==  4'b101x -> x\n// 4'b101x === 4'b101x -> 1\n// 4'b1100 ==  4'b1z10 -> 0（已知位存在确定失配）",
+        "code": "// 四态推演，不属于网页二值执行器\n// 4'b101x ==  4'b101x -> x\n// 4'b101x === 4'b101x -> 1\n// 4'b1100 ==  4'b1z10 -> 0（已知位存在确定失配）\nwire eq_unknown = 4'b101x == 4'b101x;\nwire eq_exact = 4'b101x === 4'b101x;\nwire eq_mismatch = 4'b1100 == 4'b1z10;",
         "hardware": "二值大小比较可综合为比较器；X/Z 全等常用于验证模型，不能解释为芯片具有 X 电平检测器。",
         "pitfalls": [
           "把 == 与 = 混用。",
@@ -1348,6 +1685,25 @@ export const earlyLessons = [
           ],
           "answer": 2,
           "explanation": "全等比较把 X 也作为可匹配状态，所有位一致所以得到 1。"
+        },
+        "brief": "用含 X/Z 的实际比较表达式区分普通相等（logical equality）和全等（case equality）。",
+        "walkthrough": [
+          {
+            "code": "wire eq_unknown = 4'b101x == 4'b101x;",
+            "explanation": "== 按四态逻辑判断相等，末位未知会使这次相等性无法确定，因此 eq_unknown 是 X，而不是因为文本相同就为 1。"
+          },
+          {
+            "code": "wire eq_exact = 4'b101x === 4'b101x;",
+            "explanation": "=== 把 X/Z 也作为可匹配的状态进行逐位比较，因此本例为 1；它常用于测试平台（testbench）的精确检查。"
+          },
+          {
+            "code": "wire eq_mismatch = 4'b1100 == 4'b1z10;",
+            "explanation": "第 1 位存在已知的 0 与 1 失配，已经足以证明不相等；即便另有 Z，普通相等（==）仍能确定输出 0。"
+          }
+        ],
+        "experiment": {
+          "action": "把 eq_unknown 右侧的最后一位从 x 改成 0，再比较 == 和 ===。",
+          "expected": "== 仍为 X，因为左边未知位可能等于 0 也可能不等；=== 得到 0，因为 X 状态与 0 状态不同。"
         }
       },
       {
@@ -1374,6 +1730,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "移出四位宽度的高位被丢弃，空出的低两位补 0。"
+        },
+        "brief": "追踪移位运算（shift operators）中被移出的位与新填入的位，避免把移位误当无限精度乘除。",
+        "walkthrough": [
+          {
+            "code": "assign left2 = X << 2;",
+            "explanation": "逻辑左移（logical left shift）在右侧补 0；若目标与 X 都为四位，超出左侧范围的位被丢弃。"
+          },
+          {
+            "code": "assign right1 = X >> 1;",
+            "explanation": "逻辑右移（logical right shift）在左侧补 0，不会因为最高位是 1 就自动保留负数符号。"
+          },
+          {
+            "code": "integer a=-8; a >>> 3",
+            "explanation": "这里是注释中的有符号例子：>>> 对 signed 操作数做算术右移（arithmetic right shift），补符号位，所以 -8 右移三位得 -1。"
+          }
+        ],
+        "experiment": {
+          "action": "设四位 X=1011、目标也为四位，分别计算 X<<2 和 X>>1。",
+          "expected": "结果为 1100 与 0101；左移丢掉原高位 10，右移丢掉原最低位 1，不能从输出恢复这些位。"
         }
       },
       {
@@ -1400,6 +1775,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "S[1]=1 进入 d/c 组，S[0]=0 选择 c。"
+        },
+        "brief": "把两层条件运算符（conditional operators）沿选择位拆开，读出四选一多路选择器。",
+        "walkthrough": [
+          {
+            "code": "S[1] ? (S[0] ? d : c)",
+            "explanation": "先看最高选择位 S[1]：为 1 时进入 d、c 这一组；组内 S[0]=1 选 d，S[0]=0 选 c。"
+          },
+          {
+            "code": ": (S[0] ? b : a);",
+            "explanation": "S[1]=0 时进入 b、a 组，最低选择位再决定 b 或 a；两层 MUX 对应四种二值选择码。"
+          },
+          {
+            "code": "assign bus = enable ? data : 16'bz;",
+            "explanation": "注释中的三态（tri-state）例子在 enable=0 时输出高阻 Z，不能把它误读为普通 MUX 的零数据输入。"
+          }
+        ],
+        "experiment": {
+          "action": "设 a=0、b=1、c=1、d=0，依次令 S=00、01、10、11。",
+          "expected": "out 依次为 0、1、1、0；若 01 与 10 的测试结果恰好相同，应改变 b、c 以检查是否接反。"
         }
       },
       {
@@ -1426,6 +1820,25 @@ export const earlyLessons = [
           ],
           "answer": 2,
           "explanation": "总宽度为 1+2+2=5。"
+        },
+        "brief": "用拼接（concatenation）把离散信号位放到指定输出位置，逐项核对结果位宽。",
+        "walkthrough": [
+          {
+            "code": "assign packed = {B[0], D[2], 2'b11};",
+            "explanation": "拼接项从左到右对应高位到低位：packed[3]=B[0]、packed[2]=D[2]、低两位恒为 11，总宽度为四位。"
+          },
+          {
+            "code": "{4{1'b1}} -> 4'b1111",
+            "explanation": "复制运算（replication）把内部位串重复四次；它是位的复制，不是运行四次会消耗四个时钟的过程循环。"
+          },
+          {
+            "code": "{a,a,a,a}",
+            "explanation": "普通拼接也能复制一位 a，得到四根同值的连接；若 a 实际是多位向量，总位宽（bit width）就会随之改变。"
+          }
+        ],
+        "experiment": {
+          "action": "设 B=2'b10、D=3'b100，计算 packed，再只把 B[0] 改成 1。",
+          "expected": "最初得到 0111，之后得到 1111；只改变输出最高位，说明拼接不会执行算术进位。"
         }
       },
       {
@@ -1452,6 +1865,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "两者都非零但无重叠 1：逻辑与为 1，按位与为 0000。"
+        },
+        "brief": "用括号明确表达式的逻辑分组（grouping），再用中间结果检查运算符是否写错。",
+        "walkthrough": [
+          {
+            "code": "assign y = (a & b) | (c & d);",
+            "explanation": "先求两组按位与（bitwise AND），再将结果相或；四个一位输入对应两条与门支路和最终合并关系。"
+          },
+          {
+            "code": "((A & B) != 4'b0000) && enable",
+            "explanation": "注释里的条件先检查 A、B 是否有共同为 1 的位，再与使能做逻辑与（logical AND）；括号把整体真假意图写清。"
+          }
+        ],
+        "experiment": {
+          "action": "取 a=1、b=0、c=1、d=1，再将最后的 | 错改为 &，逐组列出结果。",
+          "expected": "两个支路分别为 0 和 1，正确输出为 1；改成 & 后输出 0，反例定位到合并运算而非输入端口。"
         }
       }
     ],
@@ -2350,6 +2778,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "和位与进位是两个不同的输出节点。"
+        },
+        "brief": "围绕一位全加器（full adder）接口，分别推导和位（sum）与输出进位（carry-out）。",
+        "walkthrough": [
+          {
+            "code": "module fulladd (Cin, x, y, s, Cout);",
+            "explanation": "端口顺序（port order）是位置连接的契约：前三个是输入，s 与 Cout 是输出；实例接错顺序会改变外部连线。"
+          },
+          {
+            "code": "assign s = x ^ y ^ Cin;",
+            "explanation": "三输入异或（XOR）在输入中有奇数个 1 时产生和位 1，等价于三位相加结果的最低位。"
+          },
+          {
+            "code": "assign Cout = (x & y) | (x & Cin) | (y & Cin);",
+            "explanation": "任意一对输入同时为 1 就产生进位；三项相或实现多数逻辑（majority logic），与和位是不同输出。"
+          }
+        ],
+        "experiment": {
+          "action": "分别代入 x,y,Cin=1,1,0 与 1,1,1，将 Cout 和 s 拼为两位。",
+          "expected": "输出 {Cout,s} 分别为 10 和 11，即十进制 2 与 3，符合一位全加器的数值规格。"
         }
       },
       {
@@ -2376,6 +2823,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "两者位数均为四，但索引方向及位串映射不同。"
+        },
+        "brief": "从方向（direction）和范围（range）直接读出端口连接的位数，避免按最大下标猜位宽。",
+        "walkthrough": [
+          {
+            "code": "input a, b, sel;",
+            "explanation": "这一声明建立三个独立的一位输入端口（input ports）；逗号分隔的是信号名，不表示一条三位总线。"
+          },
+          {
+            "code": "inout [15:0] data_bus;",
+            "explanation": "data_bus 有 16 位且可双向连接（bidirectional），实际何时驱动、何时释放仍要由三态使能逻辑决定。"
+          },
+          {
+            "code": "input [15:12] addr;",
+            "explanation": "位宽（bit width）是 |15-12|+1=4，位号为 15、14、13、12；声明不会自动补出 addr[11:0]。"
+          }
+        ],
+        "experiment": {
+          "action": "给 addr 四个位依次填 1、0、1、0，再尝试寻找 addr[0]。",
+          "expected": "addr 的数值为四位 1010，但合法位号仍是 [15:12]；addr[0] 不在声明范围内，应修正索引。"
         }
       },
       {
@@ -2402,6 +2868,25 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "模块定义可重复使用，但每个具体实例需要可区分的名字。"
+        },
+        "brief": "将两个全加器实例（instances）的端口连接逐项展开，比较位置连接与命名连接。",
+        "walkthrough": [
+          {
+            "code": "fulladd u0 (carryin, X[0], Y[0], S[0], C1);",
+            "explanation": "位置连接（positional connection）按定义顺序映射：Cin 接 carryin，x/y 接最低位，s 接 S[0]，Cout 接 C1。"
+          },
+          {
+            "code": "fulladd u1 (.Cin(C1), .x(X[1]), .y(Y[1]),",
+            "explanation": "命名连接（named connection）明确写出子模块端口名；u1 通过 Cin 读取 u0 产生的 C1，构成进位链的下一段。"
+          },
+          {
+            "code": ".s(S[1]), .Cout(C2));",
+            "explanation": "S[1] 是第二级的和位，C2 是它产生的新进位；两个实例是并存硬件，不是一个函数先后调用两次。"
+          }
+        ],
+        "experiment": {
+          "action": "令 X[1:0]=01、Y[1:0]=01、carryin=0，从 u0 算到 u1。",
+          "expected": "u0 得 S[0]=0、C1=1；u1 将该进位加到 0+0，得到 S[1]=1、C2=0，低两位结果为 10。"
         }
       },
       {
@@ -2428,6 +2913,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "15+0+1=16，二进制 10000。"
+        },
+        "brief": "沿 C[1] 到 C[3] 追踪串行进位（ripple carry），把四个全加器接成四位加法器。",
+        "walkthrough": [
+          {
+            "code": "wire [3:1] C;",
+            "explanation": "C 是三位中间进位线（carry nets），有效位号为 3、2、1；输入 carryin 和最终 carryout 单独作为端口连接。"
+          },
+          {
+            "code": "fulladd stage0 (carryin, X[0], Y[0], S[0], C[1]);",
+            "explanation": "最低级接收外部输入进位，并把产生的 C[1] 接到下一级；若误接 S[0]，传播的就不再是进位。"
+          },
+          {
+            "code": "fulladd stage3 (.Cin(C[3]), .x(X[3]), .y(Y[3]),",
+            "explanation": "最高级接收前三级传播来的 C[3]；这条依赖链说明实际输出要等待组合传播延时（propagation delay）。"
+          }
+        ],
+        "experiment": {
+          "action": "取 X=0111、Y=0001、carryin=0，逐级列出每一位的和与进位。",
+          "expected": "C[1]、C[2]、C[3] 都为 1，最后 S=1000、carryout=0；这是检查跨越多级进位的关键用例。"
         }
       },
       {
@@ -2454,6 +2958,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "需要表示 0 到 8，三位最大只能到 7。"
+        },
+        "brief": "从实例参数覆盖（parameter override）看不同硬件尺寸，再用逐位相等标记理解输入准备。",
+        "walkthrough": [
+          {
+            "code": "bit_count #(8, 3) cbits (T, C);",
+            "explanation": "位置参数覆盖（positional override）按定义顺序把两个参数设为 8 和 3；读懂这行必须先确认子模块参数声明顺序。"
+          },
+          {
+            "code": "bit_count #(.n(8), .logn(3)) cbits_named (T, C);",
+            "explanation": "命名参数覆盖（named override）把尺寸含义写出来，减少调换参数的风险；每个实例可在展开时得到自己的参数值。"
+          },
+          {
+            "code": "assign T = ~(X ^ Y);",
+            "explanation": "先异或再反相，让 T 的每一位标记 X、Y 对应位是否相同；若 bit_count 统计 T 中 1，就是统计相同位数。"
+          }
+        ],
+        "experiment": {
+          "action": "令八位 X=10101010、Y=11110000，逐位计算 T，并数一数其中的 1。",
+          "expected": "T=10100101，含四个 1；若要求八位全相同时输出计数 8，计数端口必须能表示 8，三位不足。"
         }
       },
       {
@@ -2480,6 +3003,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "索引依次为 0、1、2、3，共四个实例。"
+        },
+        "brief": "使用 generate-for 在展开（elaboration）阶段复制全加器，并用下标形成进位接线。",
+        "walkthrough": [
+          {
+            "code": "assign C[0] = carryin;\nassign carryout = C[n];",
+            "explanation": "两个端点把内部 n+1 个进位节点接到外部接口；C[0] 是初始进位，C[n] 是最高级产生的最终进位。"
+          },
+          {
+            "code": "for (i=0; i<n; i=i+1) begin:addbit",
+            "explanation": "genvar 驱动生成循环（generate loop），在展开时创建 n 个命名层级；它不表示电路运行 n 个时钟周期。"
+          },
+          {
+            "code": "fulladd stage (C[i], X[i], Y[i], S[i], C[i+1]);",
+            "explanation": "每一级读取本位数据与前级进位，将新进位写到 C[i+1]；下标关系使复制出来的实例自动串联。"
+          }
+        ],
+        "experiment": {
+          "action": "取 n=3，手动把循环展开为 i=0、1、2 三个实例，列出每一级连接的 C 下标。",
+          "expected": "三级连接依次为 C[0]→C[1]、C[1]→C[2]、C[2]→C[3]，最终 carryout 接 C[3]。"
         }
       },
       {
@@ -2506,6 +3048,21 @@ export const earlyLessons = [
           ],
           "answer": 2,
           "explanation": "15+1=16 会把进位传播到最外部 carryout。"
+        },
+        "brief": "把结构加法器的输出与算术参考式（reference expression）对照，用边界向量检查接线。",
+        "walkthrough": [
+          {
+            "code": "assign total = {1'b0, X} + {1'b0, Y} + carryin;",
+            "explanation": "零扩展（zero extension）保留完整进位，total 可以作为结构电路的功能参考；相同结果并不证明内部拓扑仍是四级全加器。"
+          },
+          {
+            "code": "0+0，1+1，7+1，15+1",
+            "explanation": "这四个注释用例分别检查零输出、最低级进位、多级传播和最终进位；有针对性的测试向量（test vectors）能暴露不同接线错误。"
+          }
+        ],
+        "experiment": {
+          "action": "设 carryin=0，依次计算 X,Y=0,0；1,1；7,1；15,1，并与结构模块比较。",
+          "expected": "五位 total 依次为 00000、00010、01000、10000；首次不一致的位置能提示进位链在哪一级断开。"
         }
       }
     ],
@@ -2962,6 +3519,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "三个输入相加达到 2 或 3 时产生进位。"
+        },
+        "brief": "沿门原语（gate primitives）的中间连线，分别重建全加器的进位网络与和位网络。",
+        "walkthrough": [
+          {
+            "code": "and u0 (xy, x, y);\n  and u1 (xc, x, cin);\n  and u2 (yc, y, cin);",
+            "explanation": "三个与门（AND gates）分别检测三对输入是否同时为 1；xy、xc、yc 都是中间线网，不会保存前一次运算结果。"
+          },
+          {
+            "code": "or u3 (cout, xy, xc, yc);",
+            "explanation": "三个检测结果相或：至少一对输入为 1 就产生 cout，这正是进位的多数逻辑（majority logic）。"
+          },
+          {
+            "code": "xor u4 (t, x, y);\n  xor u5 (s, t, cin);",
+            "explanation": "两个异或门（XOR gates）串接得到 x^y^cin；中间 t 帮助在波形里定位是第一段还是第二段异或接错。"
+          }
+        ],
+        "experiment": {
+          "action": "令 x=1、y=0、cin=1，依次计算 xy、xc、yc、t，再求两个输出。",
+          "expected": "xy=0、xc=1、yc=0、t=1，因此 cout=1、s=0，拼接后为二进制 10。"
         }
       },
       {
@@ -2988,6 +3564,25 @@ export const earlyLessons = [
           ],
           "answer": 2,
           "explanation": "if0 表示控制为 0 时有效，1 时关闭输出驱动。"
+        },
+        "brief": "依据原语名字末尾的 0/1 判断使能极性（enable polarity），再区分缓冲与反相。",
+        "walkthrough": [
+          {
+            "code": "bufif0 u0 (bus0, data, en);",
+            "explanation": "bufif0 的控制为 0 时接通：en=0 输出 data，en=1 输出高阻态 Z；端口顺序为输出、数据、控制。"
+          },
+          {
+            "code": "bufif1 u1 (bus1, data, en);",
+            "explanation": "bufif1 的有效电平（active level）与前一行相反：en=1 传送 data，en=0 释放总线，不是输出逻辑 0。"
+          },
+          {
+            "code": "notif1 u2 (bus2, data, en);",
+            "explanation": "notif1 在高电平使能时输出 ~data，因此同时包含反相（inversion）和三态控制；关断时仍是 Z。"
+          }
+        ],
+        "experiment": {
+          "action": "固定 data=1，分别令 en=0、en=1，列出 bus0、bus1、bus2。",
+          "expected": "en=0 时依次为 1、Z、Z；en=1 时为 Z、1、0。应使用四态仿真（four-state simulation）观察释放。"
         }
       },
       {
@@ -3014,6 +3609,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "输出此时从 1 降到 0，所以采用下降延时 7。"
+        },
+        "brief": "先判断输出跳变方向（output transition），再选择门延时参数，避免跟着输入方向选错。",
+        "walkthrough": [
+          {
+            "code": "not #(3,5) u_inv (Y,A);",
+            "explanation": "两个参数依次是输出上升延时（rise delay）和下降延时（fall delay）；反相器使输入与输出的跳变方向相反。"
+          },
+          {
+            "code": "bufif0 #(5,6,7) u_tri (bus,data,en);",
+            "explanation": "三态原语第三个参数是关断延时（turn-off delay），表示输出进入 Z 所需时间；这些是仿真模型参数，非精确硬件延时承诺。"
+          }
+        ],
+        "experiment": {
+          "action": "在输入稳定后让 A 从 0 变 1，再从 1 变 0；另将已驱动的 bufif0 控制 en 从 0 变 1。",
+          "expected": "Y 下降等待 5 个时间单位，上升等待 3；三态输出关断进入 Z 等待 7，不能按 en 的上升误选 5。"
         }
       },
       {
@@ -3040,6 +3650,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "这是隐式连续赋值形式。"
+        },
+        "brief": "用两条并行连续赋值（continuous assignments）同时实现全加器的和位与进位。",
+        "walkthrough": [
+          {
+            "code": "assign s = x ^ y ^ cin;",
+            "explanation": "和位（sum）取三个输入的奇偶性：有一或三个 1 时为 1；表达式持续连接到 s，并非只执行一次。"
+          },
+          {
+            "code": "assign cout = (x&y) | (x&cin) | (y&cin);",
+            "explanation": "进位（carry-out）在至少两个输入为 1 时置位；该赋值与上一行并行存在，交换两行文字顺序不会改变电路。"
+          }
+        ],
+        "experiment": {
+          "action": "令 x,y,cin=1,0,0，然后仅将 cin 改成 1；分别预测 s 和 cout。",
+          "expected": "输出由 s=1、cout=0 变为 s=0、cout=1，即数值由 1 变成 2，验证两个输出实现不同逻辑。"
         }
       },
       {
@@ -3066,6 +3691,21 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "控制未变时数据变化可能不触发该过程，仿真与组合规格不一致。"
+        },
+        "brief": "将 always @(*) 读成组合重新求值（combinational evaluation），把 x2 识别为选择线。",
+        "walkthrough": [
+          {
+            "code": "always @(*) begin",
+            "explanation": "通配敏感列表（wildcard sensitivity list）让过程在读取的输入变化时重算；它没有指定时钟边沿，因此不是定时采样。"
+          },
+          {
+            "code": "if (x2) f = x1;\n  else f = x3;",
+            "explanation": "完整 if-else 令 x2=1 时选 x1，否则选 x3；阻塞赋值（blocking assignment）更新过程结果，但不因此产生寄存器。"
+          }
+        ],
+        "experiment": {
+          "action": "设 x2=1、x1=0、x3=1，不改变选择线，仅把 x1 改为 1。",
+          "expected": "f 从 0 跟随到 1；若敏感列表只写 x2，仿真可能漏掉这次更新，@(*) 避免这种遗漏。"
         }
       },
       {
@@ -3092,6 +3732,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "触发器只在指定边沿更新。"
+        },
+        "brief": "用上升沿敏感列表（posedge sensitivity）和非阻塞赋值（nonblocking assignment）描述 D 触发器。",
+        "walkthrough": [
+          {
+            "code": "output reg Q;",
+            "explanation": "Q 是过程赋值的输出变量（output variable）；是否构成存储由后面的边沿触发行为决定，不能仅凭 reg 判断。"
+          },
+          {
+            "code": "always @(posedge Clock)",
+            "explanation": "只有 Clock 上升沿（rising edge）触发采样过程；两次有效边沿之间 D 变化不会立即改变 Q。"
+          },
+          {
+            "code": "Q <= D;",
+            "explanation": "在触发边沿读取 D，并把更新排入非阻塞赋值（NBA）阶段；没有复位语句，初始 Q 在四态仿真中通常未知。"
+          }
+        ],
+        "experiment": {
+          "action": "先在一次 Clock 上升沿令 D=0，边沿后把 D 改成 1，但暂不产生下一次上升沿。",
+          "expected": "Q 先被采为 0，随后仍保持 0；到下一个上升沿才更新为 1，显示触发器（flip-flop）的存储作用。"
         }
       },
       {
@@ -3118,6 +3777,21 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "第二句读到的是第一句已经更新后的 Q1=0。"
+        },
+        "brief": "逐句追踪阻塞赋值（blocking assignments）的立即更新，理解为什么这段不是规范两级流水。",
+        "walkthrough": [
+          {
+            "code": "Q1 = D;",
+            "explanation": "边沿触发后先执行这条阻塞赋值（blocking assignment），Q1 立即变成当前采样的 D，后续语句可以读到新值。"
+          },
+          {
+            "code": "Q2 = Q1;",
+            "explanation": "第二句读取过程内刚更新的 Q1，所以同一次触发中 Q2 也得到 D；它不会自动得到边沿前的旧 Q1。"
+          }
+        ],
+        "experiment": {
+          "action": "设边沿前 D=1、Q1=0、Q2=0，在同一个上升沿按语句顺序推演。",
+          "expected": "第一句使 Q1=1，第二句随后使 Q2=1；若目标是两级移位寄存器（shift register），这种结果不符合逐级延迟意图。"
         }
       },
       {
@@ -3144,6 +3818,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "两个右侧在更新前取值，所以交换旧值。"
+        },
+        "brief": "用非阻塞赋值（nonblocking assignments）的先读取、后提交语义保留两级寄存器的旧值链。",
+        "walkthrough": [
+          {
+            "code": "Q1 <= D;",
+            "explanation": "在上升沿计算右侧 D 并安排稍后的 Q1 更新；计算完这一句时，Q1 的可读取值仍是边沿前的旧值。"
+          },
+          {
+            "code": "Q2 <= Q1;",
+            "explanation": "本句也在边沿读取右侧，因此取旧 Q1；两条赋值在非阻塞更新阶段提交，形成一级到下一级的移位（shift）。"
+          }
+        ],
+        "experiment": {
+          "action": "设初始 Q1=0、Q2=0，第一、第二个上升沿都让 D=1，逐个边沿记录 Q。",
+          "expected": "第一沿后 Q1=1、Q2=0，第二沿后 Q1=1、Q2=1；同一个输入值经过两次边沿到达第二级。"
         }
       },
       {
@@ -3170,6 +3859,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "变化的输入能暴露 Q2 应比 Q1 延迟一拍的关系。"
+        },
+        "brief": "从代码模板中的默认值、赋值符号与触发条件，区分组合选择和边沿存储。",
+        "walkthrough": [
+          {
+            "code": "y = default_value;\n  if (select) y = data;",
+            "explanation": "先给默认值（default assignment），再在条件成立时覆盖，确保 select=0 也有赋值路径，避免意外锁存器（latch）。"
+          },
+          {
+            "code": "always @(posedge clk) begin\n  Q <= D;",
+            "explanation": "posedge 描述采样时刻，<= 保留边沿前的读取关系；这组模板用于时序逻辑（sequential logic），与上方组合块不同。"
+          }
+        ],
+        "experiment": {
+          "action": "先令 select=1、data=1，再令 select=0、default_value=0；同时保持 clk 不产生上升沿。",
+          "expected": "组合输出 y 会变为 0，时序输出 Q 保持原值；两者是否需要时钟，是硬件意图而非仅由 = 或 <= 决定。"
         }
       }
     ],
@@ -3568,6 +4272,25 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "未赋值路径保留旧值，引入存储行为。"
+        },
+        "brief": "用完整 if-else 给每条组合路径赋值，把选择器（MUX）与缺失分支产生的保持行为区分开。",
+        "walkthrough": [
+          {
+            "code": "if (s == 1'b0) f = w0;",
+            "explanation": "显式比较（equality comparison）让 s=0 时选择 w0；这里赋值目标 f 应是过程变量，w0 是当前输入值。"
+          },
+          {
+            "code": "else f = w1;",
+            "explanation": "else 覆盖另一条二值路径，使 s=1 时选 w1；所有情况都有赋值，不需要保存旧 f，因此表达组合逻辑。"
+          },
+          {
+            "code": "if(s) f=w1;",
+            "explanation": "注释中的反例没有给 s=0 赋值，输出会保留旧状态；这种保持（retention）可能推导锁存器，而非完整的 MUX。"
+          }
+        ],
+        "experiment": {
+          "action": "设 w0=0、w1=1，先取 s=1，再把 s 改为 0；比较完整代码与缺分支反例。",
+          "expected": "完整代码让 f 从 1 变为 0；缺分支反例会保留 1，用这组输入就能暴露遗漏赋值的错误。"
         }
       },
       {
@@ -3594,6 +4317,25 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "第一条成立的分支执行，所以 a 的优先级更高。"
+        },
+        "brief": "沿 else-if 链（else-if chain）检查 S 的四种选择码，理解第一条成立分支如何决定输出。",
+        "walkthrough": [
+          {
+            "code": "if      (S == 2'd0) f = W[0];",
+            "explanation": "第一项检查二位选择码是否为 00；条件成立便执行这条赋值，后续 else-if 不再进入，形成顺序判定关系。"
+          },
+          {
+            "code": "else if (S == 2'd1) f = W[1];\n  else if (S == 2'd2) f = W[2];",
+            "explanation": "两个后续比较分别把 01、10 映射到 W[1]、W[2]；当前条件互斥，但一般 if 链可表达优先级（priority）。"
+          },
+          {
+            "code": "else                f = W[3];",
+            "explanation": "最终 else 为未命中前三项提供输出，二值 S 时就是 11；完整覆盖使 f 无需依赖历史值。"
+          }
+        ],
+        "experiment": {
+          "action": "取 W=0100，按 S=00、01、10、11 顺序读取 f，再把第二项误写为 W[2]。",
+          "expected": "正确输出依次是 0、0、1、0；改错后 S=01 也输出 1，反例指向第二条分支的数据索引。"
         }
       },
       {
@@ -3620,6 +4362,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "每个分支位置接受一个语句或一个 begin/end 复合语句。"
+        },
+        "brief": "用 case 语句（case statement）把选择码到数据位的映射直接写成一张可核对的表。",
+        "walkthrough": [
+          {
+            "code": "f = 1'b0;",
+            "explanation": "组合块开头先给默认值（default assignment），使后续未覆盖的路径仍有确定赋值，避免无意保持旧 f。"
+          },
+          {
+            "code": "2'd0: f=W[0];\n    2'd1: f=W[1];",
+            "explanation": "case 按选择值逐项精确匹配（exact match），00 和 01 分别连接对应的数据位；每项的冒号连接条件与动作。"
+          },
+          {
+            "code": "default: f=1'b0;",
+            "explanation": "default 在其他项都不匹配时执行；普通 case 遇到 S 中的 X/Z 不会把它们自动当无关位，此时仍可得到默认值。"
+          }
+        ],
+        "experiment": {
+          "action": "令 W=1000，分别测试 S=11 与四态值 x1，并与删除 default 的版本对照。",
+          "expected": "完整代码在 11 时得到 1，在 x1 时得到 0；即使删除 default，当前开头的默认赋值仍会把未匹配情况设为 0。"
         }
       },
       {
@@ -3646,6 +4407,25 @@ export const earlyLessons = [
           ],
           "answer": 2,
           "explanation": "casex 的通配范围最大，因此也最容易掩盖未知输入。"
+        },
+        "brief": "逐项检查 casez 的通配匹配（wildcard matching），判断模式覆盖范围和优先次序。",
+        "walkthrough": [
+          {
+            "code": "3'b1??: code=0;",
+            "explanation": "casez 把 ? 当无关位（don't-care）：只要最高位为 1，这一项就能匹配，低两位不影响 code=0。"
+          },
+          {
+            "code": "3'b01?: code=1;",
+            "explanation": "第二项固定高两位为 01，仅最低位通配；与第一项的已知二值条件不重叠，因此 010、011 都输出 1。"
+          },
+          {
+            "code": "default: code=2;",
+            "explanation": "其他未匹配值输出 2；casez 也会把选择值中的 Z 当通配，这可能掩盖未驱动信号，需在四态仿真（four-state simulation）中检查。"
+          }
+        ],
+        "experiment": {
+          "action": "依次代入 state=100、011、001，再设 state=z00，分析第一条匹配。",
+          "expected": "前三者 code 分别为 0、1、2；z00 也可匹配 1?? 得 0，说明通配匹配不能替代输入有效性检查。"
         }
       },
       {
@@ -3672,6 +4452,25 @@ export const earlyLessons = [
           ],
           "answer": 2,
           "explanation": "W[3]=1，优先级压过其他位。"
+        },
+        "brief": "从嵌套条件表达式读出最高位优先编码（priority encoding），再用 valid 区分零输入和第零位有效。",
+        "walkthrough": [
+          {
+            "code": "assign Y = W[3] ? 2'd3 :",
+            "explanation": "最外层先检查 W[3]，它为 1 就直接输出 3，不再由低位请求改变结果；这定义了最高优先级（highest priority）。"
+          },
+          {
+            "code": "W[2] ? 2'd2 :\n           W[1] ? 2'd1 : 2'd0;",
+            "explanation": "只有更高位都为 0 才继续检查低位；最后的 0 同时覆盖 W[0] 有效和全部无请求两种情况。"
+          },
+          {
+            "code": "assign valid = W[3] | W[2] | W[1] | W[0];",
+            "explanation": "valid 是所有请求的或（OR），任何一位为 1 就置位；因此输出编码 Y=0 时仍可判断是否真的存在请求。"
+          }
+        ],
+        "experiment": {
+          "action": "分别测试 W=1010、0001、0000，记录 Y 与 valid。",
+          "expected": "结果依次为 (3,1)、(0,1)、(0,0)；前者证明 W[3] 胜过 W[1]，后两者证明 valid 不可省略。"
         }
       },
       {
@@ -3698,6 +4497,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "两位只能表示 0..3，三位可以表示 4。"
+        },
+        "brief": "手动展开组合 for 循环（procedural for loop），理解 Count 如何累加 X 中的置一位。",
+        "walkthrough": [
+          {
+            "code": "Count = 0;",
+            "explanation": "每次组合重算都先清零累加器（accumulator），避免把上一次结果继续加进去；初始化赋值也是完整组合逻辑的一部分。"
+          },
+          {
+            "code": "for (k=0; k<n; k=k+1)",
+            "explanation": "循环索引（loop index）依次遍历 0 到 n-1；固定边界允许综合展开成组合网络，不能据此推断消耗 n 个周期。"
+          },
+          {
+            "code": "Count = Count + X[k];",
+            "explanation": "阻塞赋值（blocking assignment）让下一次迭代读到已更新的部分和，每个 X[k] 只贡献 0 或 1，最终得到位计数。"
+          }
+        ],
+        "experiment": {
+          "action": "取 n=4、X=1011，按 k=0、1、2、3 的顺序列出 Count。",
+          "expected": "Count 从 0 依次变为 1、2、2、3；计数目标必须有足够位宽表示 n，n=4 时至少需要三位。"
         }
       },
       {
@@ -3724,6 +4542,25 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "while 先判条件，再决定是否进入循环体。"
+        },
+        "brief": "检查 while 循环（while loop）的初值、条件和步进，证明示例能够终止且覆盖正确索引。",
+        "walkthrough": [
+          {
+            "code": "t=0;",
+            "explanation": "测试初始化过程（initial process）先把索引置为 0；若 t 仍为未知值，后面的循环条件可能无法按预期进入。"
+          },
+          {
+            "code": "while (t<MSB) begin\n    Vector[t]=1'b0;",
+            "explanation": "条件严格小于 MSB，所以只清除下标 0 到 MSB-1；Vector[MSB] 不在这段循环覆盖范围。"
+          },
+          {
+            "code": "t=t+1;",
+            "explanation": "每次迭代都推进索引（index increment），使条件最终为假；若删除这一句且初始条件为真，会形成零时间死循环。"
+          }
+        ],
+        "experiment": {
+          "action": "设 MSB=3，列出每次写入的下标，再把条件改成 t<=MSB 比较。",
+          "expected": "原代码写入 Vector[0]、[1]、[2]，改后还写 [3]；只有范围合法时才能扩大覆盖，不能盲目修改边界。"
         }
       },
       {
@@ -3750,6 +4587,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "每 5 个单位翻转一次，两个翻转组成一整周期。"
+        },
+        "brief": "从测试平台（testbench）的延时和永久循环读出时钟周期，理解仿真时间如何前进。",
+        "walkthrough": [
+          {
+            "code": "clk=0;",
+            "explanation": "initial 过程先设置已知初相位（initial phase），使后续取反从 0 与 1 之间交替，避免对 X 反相仍得到 X。"
+          },
+          {
+            "code": "forever #5 clk=~clk;",
+            "explanation": "forever 无限重复，每次 #5 先等待五个时间单位再翻转 clk；等待控制（delay control）让循环推进仿真时间。"
+          }
+        ],
+        "experiment": {
+          "action": "从 t=0 开始列出 t=5、10、15、20 的 clk；再把 #5 改为 #2。",
+          "expected": "原代码依次为 1、0、1、0，上升沿间隔 10；改后周期为 4。删除延时会形成不推进时间的无限循环。"
         }
       }
     ],
@@ -4506,6 +5358,25 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "函数名充当返回变量，函数可以有一个多位结果，但不声明额外 output/inout。"
+        },
+        "brief": "在 function 内给函数名赋值，封装一个无时间延迟的四选一计算（function result）。",
+        "walkthrough": [
+          {
+            "code": "function mux4to1;\n  input [3:0] W;\n  input [1:0] S;",
+            "explanation": "未声明返回范围时函数返回一位，恰好对应选出的 W 位；两个输入分别提供四位数据与两位选择码。"
+          },
+          {
+            "code": "0: mux4to1=W[0];\n      1: mux4to1=W[1];",
+            "explanation": "赋值目标是函数名（function name），这就是 Verilog 返回结果的写法；case 分支定义 00 与 01 的映射。"
+          },
+          {
+            "code": "default: mux4to1=1'b0;",
+            "explanation": "默认分支（default branch）保证未匹配选择码也有返回值；它不会自动等待时钟，函数调用在当前过程计算中完成。"
+          }
+        ],
+        "experiment": {
+          "action": "在调用位置令 W=1010，依次计算 mux4to1(W,0)、mux4to1(W,1)、mux4to1(W,3)。",
+          "expected": "返回值分别为 0、1、1；函数描述选择逻辑，综合器决定如何实现或共享，调用次数不等于时间周期数。"
         }
       },
       {
@@ -4532,6 +5403,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "任务通过带方向端口传递结果，调用形式是过程语句。"
+        },
+        "brief": "用任务（task）的输出形参传回二选一结果，并把定义与过程内调用区分开。",
+        "walkthrough": [
+          {
+            "code": "input a,b,s;\n  output result;",
+            "explanation": "任务通过方向端口（directional ports）接收三个输入并传出 result；它不是靠给任务名赋值返回一个函数值。"
+          },
+          {
+            "code": "if(s) result=b;\n    else result=a;",
+            "explanation": "两条完整分支给输出形参赋值，s=1 取 b，否则取 a；这段任务没有延时或事件等待，因此调用本身不消耗仿真时间。"
+          },
+          {
+            "code": "choose2(a,b,s,y);",
+            "explanation": "注释展示的调用（task call）应置于 always 或 initial 内；最后的实际参数 y 接收 result，不能当模块实例在模块外部接线。"
+          }
+        ],
+        "experiment": {
+          "action": "在合法过程里设 a=0、b=1、s=1，调用 choose2(a,b,s,y)，再改 s=0 重新调用。",
+          "expected": "两次 y 分别为 1 和 0；更改输入不会使任务定义自行执行，必须由所在过程触发并走到调用语句。"
         }
       },
       {
@@ -4558,6 +5448,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "不同通路必须可被输出区分，one-hot 数据便于追踪。"
+        },
+        "brief": "将二位选择码拆成高位选组、低位选组内，检查四选一 MUX 的全部映射。",
+        "walkthrough": [
+          {
+            "code": "S[1] ? (S[0] ? W[3] : W[2])",
+            "explanation": "高位为 1 时只在 W[3]、W[2] 中选择；低位 S[0] 再决定选较高或较低索引，两级条件对应两层 MUX。"
+          },
+          {
+            "code": ": (S[0] ? W[1] : W[0]);",
+            "explanation": "高位为 0 时进入低半组，01 选 W[1]、00 选 W[0]；两段共同实现按无符号选择码索引 W。"
+          }
+        ],
+        "experiment": {
+          "action": "取 W=0001，逐一测试 S=00、01、10、11；再把唯一的 1 移到 W[3]。",
+          "expected": "第一轮只有 S=00 输出 1，第二轮只有 S=11 输出 1；移动单个置一位能清楚暴露选择线或数据线接反。"
         }
       },
       {
@@ -4584,6 +5489,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "组号 2 乘每组 4，再加组内号 3，得到 11。"
+        },
+        "brief": "沿五个四选一实例（instances）追踪十六选一结构，高两位选组、低两位选组内。",
+        "walkthrough": [
+          {
+            "code": "mux4to1 u0(W[0:3], S16[1:0], M[0]);",
+            "explanation": "第一层 u0 从升序总线 W[0:3] 中选一位送 M[0]；切片方向（slice direction）须与子模块定义一致，不能套用降序假设。"
+          },
+          {
+            "code": "mux4to1 u2(W[8:11], S16[1:0], M[2]);",
+            "explanation": "u2 处理第三组，和其他第一层实例共享低两位选择线；同一组内偏移因此在四个组中并行计算。"
+          },
+          {
+            "code": "mux4to1 u4(M[0:3], S16[3:2], f);",
+            "explanation": "第二层用高两位从四个组结果中再选一路；低位组内选择与高位组号（group index）共同定位原始输入。"
+          }
+        ],
+        "experiment": {
+          "action": "沿课件升序接口令 S16=1001，先找高两位指定的组，再找低两位指定的组内位置。",
+          "expected": "高位 10 选择 M[2]，低位 01 选择组 W[8:11] 的第二项 W[9]，因此 f 跟随 W[9]。"
         }
       },
       {
@@ -4610,6 +5534,21 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "编号 2 的位 Y[2] 为 1，对应降序位串 0100。"
+        },
+        "brief": "用移位（shift）生成独热输出（one-hot output），再用 En 决定是否使能译码。",
+        "walkthrough": [
+          {
+            "code": "output [3:0] Y;",
+            "explanation": "输出是降序四位总线（descending vector），合法位号为 3 到 0；规格要落实到 Y[W]，不能只凭显示位置判断。"
+          },
+          {
+            "code": "assign Y = En ? (4'b0001 << W) : 4'b0000;",
+            "explanation": "En=1 时把最低位的 1 左移 W 位，使恰好一位为 1；En=0 时输出全零，成为带使能译码器（enabled decoder）。"
+          }
+        ],
+        "experiment": {
+          "action": "固定 En=1，令 W=0、1、2、3，再保持 W=2 将 En 改为 0。",
+          "expected": "Y 依次为 0001、0010、0100、1000，禁用后变为 0000；任意有效输入都满足 Y[W]=1。"
         }
       },
       {
@@ -4636,6 +5575,25 @@ export const earlyLessons = [
           ],
           "answer": 0,
           "explanation": "第一层高位译码得到 one-hot 组使能。"
+        },
+        "brief": "把四到十六译码器（decoder）分成高位组使能和低位组内译码两层。",
+        "walkthrough": [
+          {
+            "code": "dec2to4 upper(W[3:2], M, En);",
+            "explanation": "第一层只译码高两位，在 En 有效时让四个组使能（group enables）中的一个置位；M 不能直接当最终十六位输出。"
+          },
+          {
+            "code": "dec2to4 low0(W[1:0], Y[0:3], M[0]);",
+            "explanation": "第二层第零组只在 M[0] 有效时译码低两位，结果接到升序 Y[0:3]；禁用组应全零而非悬空。"
+          },
+          {
+            "code": "dec2to4 low1(W[1:0], Y[4:7], M[1]);",
+            "explanation": "第一组重复同样的低位译码，输出落在 Y[4:7]；完整实现还需同理补接另外两组，当前代码是层级片段。"
+          }
+        ],
+        "experiment": {
+          "action": "令 En=1、W=0101，先求 M，再检查 low0 与 low1 的使能和输出。",
+          "expected": "M[1]=1、M[0]=0，只有 low1 有效；沿课件升序译码映射应置 Y[5]=1，其他最终输出为 0。"
         }
       },
       {
@@ -4662,6 +5620,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "数字 0 由外围六段组成，中心横段关闭。"
+        },
+        "brief": "把 BCD 条件表达式逐位对应到段 a～g，检查七段码（seven-segment code）的顺序与亮灯极性。",
+        "walkthrough": [
+          {
+            "code": "(bcd==4'd0) ? 7'b1111110 :",
+            "explanation": "约定 leds[6:0] 对应 a,b,c,d,e,f,g 且 1 为亮，所以零点亮 a 到 f、关闭 g；实际板卡极性若相反需整体变换。"
+          },
+          {
+            "code": "(bcd==4'd1) ? 7'b0110000 :",
+            "explanation": "数码 1 只点亮 b、c，因此这两位为 1；核对段名比只看二进制串更容易发现引脚顺序（pin mapping）错位。"
+          },
+          {
+            "code": "(bcd==4'd8) ? 7'b1111111 : 7'b0000000;",
+            "explanation": "当前片段只实现 0、1、8，其余输入落到全灭默认值（default）；完整 BCD 题还需补全 2～7 与 9。"
+          }
+        ],
+        "experiment": {
+          "action": "把 bcd 依次设为 0、1、8、2，并按 a～g 标出每位亮灭。",
+          "expected": "前三个得到对应段形，2 暂时全灭；这属于示例表尚未补全，而不能据此把数码 2 的正确段码设为全零。"
         }
       },
       {
@@ -4688,6 +5665,25 @@ export const earlyLessons = [
           ],
           "answer": 1,
           "explanation": "低编号在后面遇到时覆盖早先高编号结果，所以最低位胜出。"
+        },
+        "brief": "按 for 循环的赋值覆盖顺序，推导高位优先编码器（priority encoder）和有效标志。",
+        "walkthrough": [
+          {
+            "code": "Y=2'b00;\n  valid=0;",
+            "explanation": "每次组合求值先设无请求默认值（default values），因此 W=0000 时 Y=0、valid=0，不会保留上一次编码。"
+          },
+          {
+            "code": "for(k=0;k<4;k=k+1) begin",
+            "explanation": "从低位到高位扫描输入（scan），后面的迭代可能覆盖前面已赋的 Y；循环方向直接影响最终优先关系。"
+          },
+          {
+            "code": "Y=k;",
+            "explanation": "每次发现 W[k]=1 就用当前下标覆盖 Y，因此最终留下最高置一位的索引；valid 同时置 1，区分无请求与第零位请求。"
+          }
+        ],
+        "experiment": {
+          "action": "令 W=1010，列出 k=0、1、2、3 的 Y 更新，再将循环改为高位向低位遍历。",
+          "expected": "原代码在 k=1 写 1，k=3 再写 3，最终 Y=3；若反向遍历且仍覆盖，最低置一位会最后获胜。"
         }
       },
       {
@@ -4714,6 +5710,25 @@ export const earlyLessons = [
           ],
           "answer": 2,
           "explanation": "unsigned 解释为 15 和 1，因此大于标志为 1。"
+        },
+        "brief": "使用三个独立连续赋值（continuous assignments）同时产生四位无符号比较结果。",
+        "walkthrough": [
+          {
+            "code": "input [3:0] A,B;",
+            "explanation": "输入未声明 signed，因此按无符号（unsigned）数值比较，范围为 0 到 15；最高位为 1 并不自动表示负数。"
+          },
+          {
+            "code": "assign eq = A==B;",
+            "explanation": "相等比较（equality）生成一位 eq，检查整个四位数值是否一致；它不同于逐位同或形成的四位相同标记。"
+          },
+          {
+            "code": "assign gt = A>B;\n  assign lt = A<B;",
+            "explanation": "大于和小于比较（relational comparisons）各输出一位；在二值输入下 eq、gt、lt 恰好只有一个为 1。"
+          }
+        ],
+        "experiment": {
+          "action": "设 A=1111、B=0001，再令两者都为 1000，分别记录 eq、gt、lt。",
+          "expected": "第一组为 (0,1,0)，第二组为 (1,0,0)；若想把 1111 视作 -1，须先明确有符号声明和表达式规则。"
         }
       }
     ],

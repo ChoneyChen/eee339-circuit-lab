@@ -410,4 +410,1107 @@ const lesson15 = {
  ]
 };
 
+
+// Code-first learning layer: original long-form source notes remain in body.
+const codeFirstExamples = {
+  "l8-overflow": "module signed_flags(input [3:0] a,b,output [3:0] s,\n output carry,unsigned_overflow,signed_overflow);\n wire [4:0] wide;\n assign wide = {1'b0,a}+{1'b0,b};\n assign s = wide[3:0];\n assign carry = wide[4];\n assign unsigned_overflow = carry;\n assign signed_overflow = (~(a[3] ^ b[3])) & (a[3] ^ s[3]);\nendmodule",
+  "l9-timing": "// Non-synthesizable testbench: check GIVEN delays, not STA measurement.\nmodule timing_budget;\n parameter integer TCQ_MAX=2,COMB_MAX=6,SETUP=2;\n parameter integer TCQ_MIN=1,COMB_MIN=1,HOLD=1;\n parameter integer TCLK=10; // all parameters in ns\n initial begin\n  $display(\"setup_ok=%0d\", TCLK >= TCQ_MAX+COMB_MAX+SETUP);\n  $display(\"hold_ok=%0d\", TCQ_MIN+COMB_MIN >= HOLD);\n  $display(\"fmax_MHz=%0d\", 1000/(TCQ_MAX+COMB_MAX+SETUP));\n end\nendmodule",
+  "l11-flow": "module fsm_parts(input clk,rst_n,w,output z);\n reg state;\n wire next;\n assign next = w;\n always @(posedge clk or negedge rst_n)\n  if(!rst_n) state <= 1'b0; else state <= next;\n assign z = state & w;\nendmodule",
+  "l11-moore": "// Combinational fragment; A=00, B=01, C=10.\nalways @(*) begin\n case(state)\n  A: next = w ? B : A;\n  B: next = w ? C : A;\n  C: next = w ? C : A;\n  default: next = A;\n endcase\nend\nassign z = (state == C);",
+  "l12-meaning": "// ASM fragment: state register, next-state gates, Moore output.\nalways @(posedge clk or negedge rst_n)\n if(!rst_n) state <= A; else state <= next;\nalways @(*) begin\n next = A;\n case(state)\n  A: next = w ? C : A;\n  C: next = w ? C : A;\n  default: next = A;\n endcase\nend\nassign z = (state == C);",
+  "l13-swap": "// RTL fragment; state is supplied by the three-step controller.\nassign bus = (state==T1) ? R2 :\n             (state==T2) ? R1 : R3;\nalways @(posedge clk) begin\n case(state)\n  T1: R3 <= bus;\n  T2: R2 <= bus;\n  T3: R1 <= bus;\n endcase\nend",
+  "l13-waveform": "// Non-synthesizable testbench fragment; DUT is the swap controller.\n// Before start, use DUT's external-load interface to set R1=55,R2=AA.\n@(negedge clk) start=1;\n@(posedge clk) #1; // IDLE -> T1, no transfer yet\n@(negedge clk) start=0;\n@(posedge clk) #1; $display(\"T1 end R3=%h\",dut.R3);\n@(posedge clk) #1; $display(\"T2 end R2=%h\",dut.R2);\n@(posedge clk) #1; $display(\"T3 end R1=%h R2=%h\",dut.R1,dut.R2);",
+  "l13-practice": "// Non-synthesizable testbench fragment, after the T3 transfer edge.\n#1; // inspect after nonblocking assignments settle\nif (dut.R1 !== 8'hAA || dut.R2 !== 8'h55)\n $display(\"FAIL: R1=%h R2=%h\",dut.R1,dut.R2);\nelse\n $display(\"PASS: swap complete\");",
+  "l14-bridge": "module writeback(input clk,reset_n,write_enable,select_memory,\n input [31:0] a,b,memory_data,output reg [31:0] q);\n wire [31:0] alu_result,write_data;\n assign alu_result = a + b;\n assign write_data = select_memory ? memory_data : alu_result;\n always @(posedge clk or negedge reset_n)\n  if(!reset_n) q <= 32'd0;\n  else if(write_enable) q <= write_data;\nendmodule",
+  "l14-terms": "module width_demo(input [31:0] instruction,\n input [63:0] operand_a,operand_b,\n output [63:0] result,output [5:0] opcode);\n assign result = operand_a + operand_b;\n assign opcode = instruction[31:26];\nendmodule",
+  "l14-isa": "// MIPS-style decode fragment; this is not a full processor.\nwire [5:0] opcode,funct;\nwire [4:0] rs;\nassign opcode = instruction[31:26];\nassign funct = instruction[5:0];\nassign rs = instruction[25:21];\nassign is_add = (opcode==6'b000000) & (funct==6'b100000);\nassign is_lw = (opcode==6'b100011);",
+  "l14-software": "// RTL fragment: one possible multicycle sequence for a=b+c.\n// State register/control and memory handshake are omitted.\nalways @(posedge clk) begin\n case(state)\n  LOAD_B: rb <= memory_data;\n  LOAD_C: rc <= memory_data;\n  ADD: result <= rb + rc;\n  STORE: write_buffer <= result;\n endcase\nend",
+  "l14-components": "// Combinational datapath fragment for a 32-bit MIPS-style lw.\nassign offset = {{16{instruction[15]}},instruction[15:0]};\nassign effective_address = base + offset;\nassign sequential_pc = pc + 32'd4;\nassign writeback_data = memory_read_data;\n// Controller supplies the memory-read and register-write enables.",
+  "l15-metric": "// Non-synthesizable testbench fragment; tick is a simulated clock edge.\n// A and B complete the SAME workload; both start at cycle zero.\ninteger cycle=0,finish_a=0,finish_b=0;\nalways @(posedge clk) begin\n cycle = cycle+1;\n if(done_a && finish_a==0) finish_a=cycle;\n if(done_b && finish_b==0) finish_b=cycle;\n if(finish_a!=0 && finish_b!=0) begin\n  $display(\"A/B performance=%0f\",1.0*finish_b/finish_a);\n  $finish;\n end\nend",
+  "l15-clock": "`timescale 1ps/1ps\n// Non-synthesizable testbench: ideal 250 ps period, NOT a clock generator RTL.\nmodule clock_demo;\n reg clk=0;\n integer edges=0;\n always #125 clk=~clk;\n always @(posedge clk) edges=edges+1;\n initial begin\n  #1000;\n  $display(\"edges=%0d frequency_GHz=%0f\",edges,1000.0/250.0);\n  $finish;\n end\nendmodule",
+  "l15-equation": "// Non-synthesizable testbench: scale a trace, not real CPU execution.\nmodule cpu_time_example;\n real instructions,cycles,frequency_hz;\n initial begin\n  instructions=6.0e9;\n  cycles=instructions*1.5;\n  frequency_hz=3.0e9;\n  $display(\"cycles=%0f CPU_seconds=%0f\",cycles,cycles/frequency_hz);\n end\nendmodule",
+  "l15-mix": "module mix_count(input [7:0] a,b,c,\n output [9:0] instructions,output [10:0] cycles);\n assign instructions = {2'b00,a}+{2'b00,b}+{2'b00,c};\n assign cycles = {3'b000,a}+({3'b000,b}<<1)\n              +({3'b000,c}<<1)+{3'b000,c};\nendmodule",
+  "l15-factors": "// Non-synthesizable testbench; compare a fixed workload's GIVEN factors.\nmodule factor_compare;\n real old_ic,old_cpi,new_ic,new_cpi,frequency;\n initial begin\n  old_ic=100.0; old_cpi=2.0; frequency=1.0e9;\n  new_ic=old_ic*0.8; new_cpi=old_cpi*1.5;\n  $display(\"old_cycles=%0f new_cycles=%0f\",old_ic*old_cpi,new_ic*new_cpi);\n  $display(\"time_ratio=%0f\",(new_ic*new_cpi/frequency)/(old_ic*old_cpi/frequency));\n end\nendmodule",
+  "l15-amdahl": "// Non-synthesizable testbench: fixed-work model, both paths stay sequential.\nmodule amdahl_example;\n integer unchanged_cycles=40,improvable_cycles=60;\n integer speedup_part=3,new_cycles;\n initial begin\n  new_cycles=unchanged_cycles+improvable_cycles/speedup_part;\n  $display(\"new_cycles=%0d overall_speedup=%0f\",new_cycles,100.0/new_cycles);\n end\nendmodule",
+  "l15-mips": "// Non-synthesizable testbench; fixed work, GIVEN instruction-class counts.\nmodule mips_counterexample;\n real cycles_a,cycles_b,seconds_a,seconds_b;\n initial begin\n  cycles_a=5.0e6+1.0e6*2+1.0e6*3;\n  cycles_b=10.0e6+1.0e6*2+1.0e6*3;\n  seconds_a=cycles_a/1.0e9; seconds_b=cycles_b/1.0e9;\n  $display(\"A: seconds=%0f MIPS=%0f\",seconds_a,7.0e6/seconds_a/1.0e6);\n  $display(\"B: seconds=%0f MIPS=%0f\",seconds_b,12.0e6/seconds_b/1.0e6);\n end\nendmodule",
+  "l15-review": "// Non-synthesizable testbench: units are stated explicitly in signal names.\nmodule performance_check;\n real ic,cpi,frequency_hz,total_cycles,cpu_seconds;\n initial begin\n  ic=6.0e9; cpi=1.5; frequency_hz=3.0e9;\n  total_cycles=ic*cpi;\n  cpu_seconds=total_cycles/frequency_hz;\n  if(cpu_seconds < 2.999 || cpu_seconds > 3.001)\n   $display(\"FAIL: check units and assumptions\");\n  else $display(\"PASS: CPU_seconds=%0f\",cpu_seconds);\n end\nendmodule"
+};
+const codeFirstNotes = {
+  "l8-half": {
+    "brief": "两条 assign 分别构造异或门（XOR gate）和与门（AND gate），一起表达完整的 1 位加法。",
+    "walkthrough": [
+      {
+        "code": "assign sum = a ^ b;",
+        "explanation": "连续赋值（continuous assignment）把 a、b 接进 XOR；两输入不同才令 sum=1，无需时钟。"
+      },
+      {
+        "code": "assign carry = a & b;",
+        "explanation": "与门（AND gate）产生进位（carry）；a=b=1 时输出 carry=1、sum=0。"
+      }
+    ],
+    "experiment": {
+      "action": "把 a、b 从 0、1 改成 1、1，分别观察 sum 与 carry。",
+      "expected": "完整结果 {carry,sum} 从 01 变成 10；只看 sum 会误以为结果变小。"
+    }
+  },
+  "l8-full": {
+    "brief": "三输入异或（XOR）算和位，多数逻辑（majority logic）算进位，两个 assign 并行工作。",
+    "walkthrough": [
+      {
+        "code": "assign sum = a ^ b ^ cin;",
+        "explanation": "sum 是奇偶性（parity）：三个输入中有奇数个 1 时为 1，并非只允许一个 1。"
+      },
+      {
+        "code": "assign cout = (a & b) | (a & cin) | (b & cin);",
+        "explanation": "三个 AND 项寻找任意一对 1，再由 OR 合并；至少两个 1 才产生输出进位（carry-out）。"
+      }
+    ],
+    "experiment": {
+      "action": "依次输入 a,b,cin=101、111，比较两个输出。",
+      "expected": "101 得 {cout,sum}=10；111 得 11。把 ^ 错写成 | 会在 101 的 sum 上暴露错误。"
+    }
+  },
+  "l8-ripple": {
+    "brief": "四个全加器（full adders）通过内部进位线连接，构成串行进位加法器（ripple-carry adder）。",
+    "walkthrough": [
+      {
+        "code": "wire [3:1] C;",
+        "explanation": "wire 声明三个内部进位节点（carry nodes），不是三个寄存器；各自连接相邻两个实例。"
+      },
+      {
+        "code": "fulladd s0(.a(X[0]),.b(Y[0]),.cin(carryin),.sum(S[0]),.cout(C[1]));",
+        "explanation": "名称端口连接（named port connection）让最低位读取 carryin，再把进位交给 C[1]。"
+      },
+      {
+        "code": "fulladd s3(.a(X[3]),.b(Y[3]),.cin(C[3]),.sum(S[3]),.cout(carryout));",
+        "explanation": "最高位必须读取前一级 C[3]；这条进位链（carry chain）决定串行传播路径。"
+      }
+    ],
+    "experiment": {
+      "action": "保持 X=1111、Y=0000，把 carryin 从 0 改为 1。",
+      "expected": "{carryout,S} 从 0_1111 变成 1_0000；功能仿真显示结果，真实传播延迟需器件时序模型。"
+    }
+  },
+  "l8-generate": {
+    "brief": "generate 循环在展开（elaboration）时复制全加器，n 决定硬件数量而非运行周期。",
+    "walkthrough": [
+      {
+        "code": "wire [n:0] C;",
+        "explanation": "n+1 根进位线（carry wires）同时覆盖输入、级间节点与输出，使边界连接统一。"
+      },
+      {
+        "code": "generate for(i=0;i<n;i=i+1) begin:addbit",
+        "explanation": "genvar 索引在展开（elaboration）阶段取常量值；n=4 时生成四份 addbit 硬件层次。"
+      },
+      {
+        "code": ".sum(S[i]),.cout(C[i+1]));",
+        "explanation": "每级把本位 sum 连到 S[i]，把进位送到下一级；循环表达空间复制（replication）。"
+      }
+    ],
+    "experiment": {
+      "action": "将参数 n 改成 8，输入 X=8'hFF、Y=0、carryin=1。",
+      "expected": "展开后有八个 fulladd 实例，S=0、carryout=1；增加位数并不会自动增加八个时钟周期。"
+    }
+  },
+  "l8-overflow": {
+    "brief": "同一加法结果分别经过进位（carry）与符号变化检测，区分两类溢出（overflow）。",
+    "walkthrough": [
+      {
+        "code": "assign wide = {1'b0,a}+{1'b0,b};",
+        "explanation": "零扩展（zero extension）先把输入变为 5 位，保留最高位的无符号进位。"
+      },
+      {
+        "code": "assign unsigned_overflow = carry;",
+        "explanation": "无符号溢出（unsigned overflow）直接读取 wide[4]；它不负责解释四位补码的正负。"
+      },
+      {
+        "code": "assign signed_overflow = (~(a[3] ^ b[3])) & (a[3] ^ s[3]);",
+        "explanation": "补码溢出（signed overflow）要求两输入同号、结果异号，与最高位输出进位是不同判断。"
+      }
+    ],
+    "experiment": {
+      "action": "先输入 a=0111,b=0010，再输入 a=0111,b=1110。",
+      "expected": "第一组 s=1001、unsigned_overflow=0、signed_overflow=1；第二组 s=0101、两标志分别为 1、0。"
+    }
+  },
+  "l8-behavior": {
+    "brief": "扩宽、相加、切片（slice）和标志逻辑把加法结果拆成可核查的四部分。",
+    "walkthrough": [
+      {
+        "code": "assign wide = {1'b0,a} + {1'b0,b} + cin;",
+        "explanation": "显式位宽（bit width）保留 5 位结果；若先存到四位 sum，再补零就找不回已丢弃的进位。"
+      },
+      {
+        "code": "assign sum = wide[3:0];",
+        "explanation": "切片（part-select）把低四位接到 sum，把 wide[4] 单独送给 cout；没有新增存储。"
+      },
+      {
+        "code": "assign overflow = cout ^ a[3] ^ b[3] ^ sum[3];",
+        "explanation": "异或（XOR）重建符号位输入进位，再与输出进位比较，生成补码溢出标志。"
+      }
+    ],
+    "experiment": {
+      "action": "设 a=1111、b=0000、cin=1，再试 a=0111、b=0000、cin=1。",
+      "expected": "两次 sum 都为四位低位；前者 cout=1、overflow=0，后者 cout=0、overflow=1。"
+    }
+  },
+  "l8-bcd": {
+    "brief": "5 位中间和先比较 10，再加 6 修正，构造一位 BCD（binary-coded decimal）加法器。",
+    "walkthrough": [
+      {
+        "code": "assign raw = {1'b0,a}+{1'b0,b}+cin;",
+        "explanation": "输入限定为合法 BCD 数字 0…9；零扩展（zero extension）使最大中间值 19 可以完整保留。"
+      },
+      {
+        "code": "assign fixed_sum = raw < 5'd10 ? raw : raw+5'd6;",
+        "explanation": "条件运算符（conditional operator）生成选择器：和不足 10 直接通过，否则选择加 6 的支路。"
+      },
+      {
+        "code": "assign cout = fixed_sum[4];",
+        "explanation": "修正后的最高位才是十进制进位（decimal carry），低四位是合法的个位 BCD。"
+      }
+    ],
+    "experiment": {
+      "action": "输入 a=7、b=5、cin=0，追踪 raw、fixed_sum、digit 和 cout。",
+      "expected": "raw=01100，fixed_sum=10010，digit=0010、cout=1，表示十进制 12。"
+    }
+  },
+  "l9-storage": {
+    "brief": "posedge 让 D 只在上升沿采样，得到 D 触发器（D flip-flop），而非透明锁存器。",
+    "walkthrough": [
+      {
+        "code": "output reg Q",
+        "explanation": "reg 表示可由过程赋值的变量（procedural variable）；真正的存储结构还取决于 always 的事件。"
+      },
+      {
+        "code": "always @(posedge Clock) Q <= D;",
+        "explanation": "上升沿（positive edge）触发一次采样；非阻塞赋值（nonblocking assignment）在本时间步稍后更新 Q。"
+      }
+    ],
+    "experiment": {
+      "action": "先在上升沿令 D=0；随后在两个上升沿之间让 D 短暂变成 1 再变回 0。",
+      "expected": "Q 保持 0，边沿间短脉冲不会被采到；若使用高电平透明 latch，行为会不同。"
+    }
+  },
+  "l9-latch": {
+    "brief": "先给默认值（default assignment），再用 if 覆盖，保证 y 每条组合路径都有赋值。",
+    "walkthrough": [
+      {
+        "code": "always @(*) begin",
+        "explanation": "通配敏感表（implicit sensitivity list）让块在所读输入变化时重算，适合描述组合逻辑。"
+      },
+      {
+        "code": "y = b;",
+        "explanation": "默认赋值（default assignment）覆盖 sel=0 的路径，防止输出被迫保留旧值而推断 latch。"
+      },
+      {
+        "code": "if (sel) y = a;",
+        "explanation": "阻塞赋值（blocking assignment）按块内顺序覆盖默认值；sel=1 选择 a，得到二选一 MUX。"
+      }
+    ],
+    "experiment": {
+      "action": "设 a=1、b=0，把 sel 从 1 切到 0；再删除 y=b 重做同样刺激。",
+      "expected": "完整代码令 y 从 1 变 0；缺默认值时 sel=0 没有赋值，y 保持旧 1，形成意外 latch。"
+    }
+  },
+  "l9-reset": {
+    "brief": "敏感表决定异步复位（asynchronous reset），if 顺序决定 reset 与 enable 的优先级。",
+    "walkthrough": [
+      {
+        "code": "always @(posedge Clock or negedge Resetn)",
+        "explanation": "下降沿（negative edge）Resetn 也能触发块，因此复位不必等待时钟上升沿。"
+      },
+      {
+        "code": "if (!Resetn) Q <= 1'b0;",
+        "explanation": "低有效复位（active-low reset）在 Resetn=0 时最高优先，E=1 也不能阻止清零。"
+      },
+      {
+        "code": "else if (E) Q <= D;",
+        "explanation": "使能（enable）为 1 才加载 D；E=0 没有更新分支，在这个时钟块里表示寄存器保持。"
+      }
+    ],
+    "experiment": {
+      "action": "先令 Q=1，在两个时钟上升沿中间拉低 Resetn；释放后令 E=0、D=1 再走一沿。",
+      "expected": "Resetn 拉低时 Q 立即在该仿真时间步清零；释放后 E=0 的边沿仍保持 Q=0。"
+    }
+  },
+  "l9-timing": {
+    "brief": "这段非综合测试平台（testbench）用给定延迟预算检查 setup、hold，并不测量真实门延迟。",
+    "walkthrough": [
+      {
+        "code": "TCLK >= TCQ_MAX+COMB_MAX+SETUP",
+        "explanation": "建立时间（setup time）检查最长路径预算；给定 2+6+2=10ns，TCLK=10 刚好满足。"
+      },
+      {
+        "code": "TCQ_MIN+COMB_MIN >= HOLD",
+        "explanation": "保持时间（hold time）检查最短路径；此式没有时钟周期，因此延长 TCLK 不会直接修复它。"
+      },
+      {
+        "code": "1000/(TCQ_MAX+COMB_MAX+SETUP)",
+        "explanation": "当输入单位为 ns，1000 除以最小周期得到 MHz；这里只计算给定预算，不替代静态时序分析（STA）。"
+      }
+    ],
+    "experiment": {
+      "action": "在完整 Verilog 仿真器中将 TCLK 从 10 改为 8，再将 HOLD 从 1 改为 3。",
+      "expected": "先得到 setup_ok=0；第二次 hold_ok=0，fmax_MHz 仍为给定最长路径对应的 100。"
+    }
+  },
+  "l9-assignment": {
+    "brief": "两条 <= 读取同一边沿前的值，构成两级流水寄存器（pipeline registers）。",
+    "walkthrough": [
+      {
+        "code": "always @(posedge Clock) begin",
+        "explanation": "同一上升沿（rising edge）启动整个过程；源码行先后不代表硬件在两个不同边沿更新。"
+      },
+      {
+        "code": "Q1 <= D;",
+        "explanation": "非阻塞赋值（nonblocking assignment）先计算旧输入 D，预约更新 Q1，不立即覆盖旧 Q1。"
+      },
+      {
+        "code": "Q2 <= Q1;",
+        "explanation": "此处读取旧 Q1，因此 Q2 形成第二级流水延迟（pipeline delay）；若改成阻塞赋值，D 端连接随之改变。"
+      }
+    ],
+    "experiment": {
+      "action": "边沿前设 D=1、Q1=0、Q2=0，推进一个上升沿后再观察；随后 D 保持 1 再推进一沿。",
+      "expected": "第一沿 Q1=1、Q2=0；第二沿 Q1=1、Q2=1，展示两级采样（sampling）。"
+    }
+  },
+  "l9-dataflow": {
+    "brief": "f 的寄存器输出进入 g 的或门（OR gate），因此 x1、x2 的影响多经过一个采样级。",
+    "walkthrough": [
+      {
+        "code": "f <= x1 & x2;",
+        "explanation": "与门（AND gate）产生 f 的 D 输入，当前边沿用 x1、x2 计算下一份 f。"
+      },
+      {
+        "code": "g <= f | x3;",
+        "explanation": "g 读取旧 f，经 OR 与当前 x3 合成 D 输入；x3 的路径并不经过 f 触发器。"
+      }
+    ],
+    "experiment": {
+      "action": "边沿前令 f=g=0、x1=x2=1、x3=0，连续推进两个上升沿。",
+      "expected": "第一沿 f=1、g=0；第二沿 f=1、g=1。若单独令 x3=1，g 可在下一沿直接变 1。"
+    }
+  },
+  "l9-shift": {
+    "brief": "加载（load）分支优先；否则拼接（concatenation）把旧高位接向低位，构造右移寄存器。",
+    "walkthrough": [
+      {
+        "code": "if (L) Q <= R;",
+        "explanation": "并行加载（parallel load）一次把 R 的四位送入四个触发器，优先于移位。"
+      },
+      {
+        "code": "else Q <= {w,Q[3:1]};",
+        "explanation": "拼接（concatenation）把 w 放到最高位，旧 Q[3:1] 移向低位；它是右移（right shift）。"
+      }
+    ],
+    "experiment": {
+      "action": "先用 L=1 加载 R=1010；下一个边沿令 L=0、w=1。",
+      "expected": "Q 从 1010 变成 1101；四位同时在一个边沿更新，不是四个周期逐位执行。"
+    }
+  },
+  "l9-counter": {
+    "brief": "反馈加一、比较终值与使能（enable）共同构成模 10 计数器和级联条件。",
+    "walkthrough": [
+      {
+        "code": "assign tc = E & (Q==4'd9);",
+        "explanation": "终值（terminal count）只有在 Q=9 且允许计数时才为 1，应接下一级 enable 而不是 clock。"
+      },
+      {
+        "code": "if (Q==4'd9) Q <= 4'd0;",
+        "explanation": "终值比较器（comparator）选择回绕到 0 的 D 输入，使计数模数为 10 而不是天然的 16。"
+      },
+      {
+        "code": "else Q <= Q+1'b1;",
+        "explanation": "加法器（adder）把旧 Q 加一回送寄存器；外层 E=0 时保持，异步复位优先。"
+      }
+    ],
+    "experiment": {
+      "action": "令 Q=9、E=0 走一沿，再令 E=1 观察 tc 并走一沿。",
+      "expected": "暂停时 tc=0、Q 保持 9；使能后 tc=1，到边沿 Q 回到 0，并可让高一位同时加一。"
+    }
+  },
+  "l9-testbench": {
+    "brief": "# 延迟产生测试刺激（stimulus），posedge 才决定被测计数器何时采样 E。",
+    "walkthrough": [
+      {
+        "code": "always #5 clk=~clk;",
+        "explanation": "测试平台时钟（testbench clock）每 5ns 翻转一次，周期 10ns；# 延迟不代表可综合时钟发生器。"
+      },
+      {
+        "code": "#22 Resetn=1;",
+        "explanation": "初始从 t=0 拉低复位，到 22ns 释放，下一上升沿是 25ns；此时 E 仍为 0。"
+      },
+      {
+        "code": "#50 E=0;",
+        "explanation": "E 在 32ns 打开、82ns 关闭，实际采样边沿为 35、45、55、65、75ns，共五次。"
+      }
+    ],
+    "experiment": {
+      "action": "在事件驱动 Verilog 仿真器中运行该 testbench，观察 25、35、75、85ns 的 Q。",
+      "expected": "复位后 Q 在 25ns 仍为 0，35ns 为 1，75ns 为 5，85ns 保持 5；浏览器固定模型不执行此 # 代码。"
+    }
+  },
+  "l11-flow": {
+    "brief": "一个状态寄存器（state register）加两条组合关系，展示有限状态机（FSM）如何记住输入历史。",
+    "walkthrough": [
+      {
+        "code": "assign next = w;",
+        "explanation": "次态（next state）持续跟随当前 w；这条线只是计算下一次要装入的值，还没有存储功能。"
+      },
+      {
+        "code": "if(!rst_n) state <= 1'b0; else state <= next;",
+        "explanation": "状态寄存器（state register）只在上升沿装入 next，异步低有效复位先把历史清为 0。"
+      },
+      {
+        "code": "assign z = state & w;",
+        "explanation": "Mealy 输出（Mealy output）同时依赖旧输入记忆 state 与当前 w，因此可在周期中随 w 变化。"
+      }
+    ],
+    "experiment": {
+      "action": "复位后输入 w=1 并推进一沿；保持在同一周期内将 w 从 1 改为 0。",
+      "expected": "上升沿后 state=1；w=1 时 z=1，w 降为 0 时 z 立即为 0，state 仍保持 1。"
+    }
+  },
+  "l11-moore": {
+    "brief": "case 把状态表写成次态逻辑（next-state logic），z 只译码当前状态，形成 Moore 输出。",
+    "walkthrough": [
+      {
+        "code": "A: next = w ? B : A;",
+        "explanation": "A 表示尚未连续见到 1；输入 1 时选择 B，否则留在 A，保存所需历史（history）。"
+      },
+      {
+        "code": "B: next = w ? C : A;",
+        "explanation": "B 记住刚见到一个 1；再来一个 1 进入 C，输入 0 则清除连续序列（sequence）记录。"
+      },
+      {
+        "code": "assign z = (state == C);",
+        "explanation": "Moore 输出（Moore output）只看已存入的 state；next=C 并不立即使 z=1。"
+      }
+    ],
+    "experiment": {
+      "action": "配合本课状态寄存器，从复位 A 开始依次在边沿采样 w=1、1、0。",
+      "expected": "边沿后的状态依次 B、C、A，z 依次 0、1、0；第二个 1 的边沿才正式进入检测态。"
+    }
+  },
+  "l11-equations": {
+    "brief": "将合法状态编码后的布尔方程（Boolean equations）直接连接到触发器 D 输入。",
+    "walkthrough": [
+      {
+        "code": "assign next[0] = w & ~y[0] & ~y[1];",
+        "explanation": "最低位次态（next-state bit）仅在当前 A=00 且 w=1 时为 1，对应跳转到 B=01。"
+      },
+      {
+        "code": "assign next[1] = w & (y[0] | y[1]);",
+        "explanation": "最高位次态（next-state bit）在 B=01 或 C=10 且 w=1 时置 1，对应进入或保持 C。"
+      },
+      {
+        "code": "assign z = y[1];",
+        "explanation": "合法编码（legal encoding）中只有 C 的 y[1]=1，因此一根连线即可完成 Moore 输出译码。"
+      }
+    ],
+    "experiment": {
+      "action": "先在组合方程中令 y=01、w=1，再令 y=10、w=0。",
+      "expected": "第一组 next=10、当前 z=0；第二组 next=00、当前 z=1，区分当前输出与下一状态。"
+    }
+  },
+  "l11-mealy": {
+    "brief": "previous 寄存器保存上次采样值，再与当前 w 相与，得到两状态 Mealy 检测器。",
+    "walkthrough": [
+      {
+        "code": "else previous <= w;",
+        "explanation": "触发器（flip-flop）保存最近一次采样的 w，previous 是历史信息而不是运行到的程序行号。"
+      },
+      {
+        "code": "assign z = previous & w;",
+        "explanation": "Mealy 组合输出（combinational output）把当前输入直接接入 AND，能在下个边沿前响应第二个 1。"
+      }
+    ],
+    "experiment": {
+      "action": "先在上升沿采到 w=1，再在随后下降沿把 w 从 0 改为 1，观察下一上升沿之前的 z。",
+      "expected": "previous 仍为 1，当前 w 变 1 时 z 已为 1；直接输入路径也意味着毛刺（glitch）可能到达 z。"
+    }
+  },
+  "l11-template": {
+    "brief": "状态寄存器、case 次态和输出译码各司其职，构成完整可综合的 Moore FSM 模板。",
+    "walkthrough": [
+      {
+        "code": "if(!rst_n) state<=A; else state<=next;",
+        "explanation": "时序逻辑（sequential logic）仅负责记忆；复位回 A，其余边沿统一装入组合 next。"
+      },
+      {
+        "code": "B: next=w?C:A;",
+        "explanation": "组合次态逻辑（next-state logic）把状态 B 的两种输入全部覆盖，不在此处更新 state。"
+      },
+      {
+        "code": "default: next=A;",
+        "explanation": "非法状态（illegal state）有明确恢复路径，避免缺失赋值推断 latch，也避免机器卡死。"
+      },
+      {
+        "code": "assign z=(state==C);",
+        "explanation": "Moore 输出译码（output decode）来自当前 state，和状态跳转计算保持清晰分工。"
+      }
+    ],
+    "experiment": {
+      "action": "复位后按边沿输入 1、1、1、0；在完整仿真器中再强制 state=11 后释放。",
+      "expected": "正常状态为 B、C、C、A；非法 11 经 default 计算 next=A，在下一沿恢复 A。"
+    }
+  },
+  "l11-default": {
+    "brief": "先给 next 和 z 安全默认值（safe defaults），再由 case 覆盖有效分支，防止组合锁存。",
+    "walkthrough": [
+      {
+        "code": "next=A;",
+        "explanation": "默认次态（default next state）让非法码和未覆盖条件都回 A，避免 next 保留上一次组合计算值。"
+      },
+      {
+        "code": "z=1'b0;",
+        "explanation": "默认输出（default output）覆盖所有非检测条件；不能靠某个旧分支的值维持 z。"
+      },
+      {
+        "code": "B: if(w) begin next=B; z=1'b1; end",
+        "explanation": "在 B 且 w=1 时同时保持 B 并输出 1，这是当前输入参与的 Mealy 条件输出。"
+      }
+    ],
+    "experiment": {
+      "action": "在组合片段中设置 state=B，先令 w=1 再改为 0；另试非法 state。",
+      "expected": "B,w=1 得 next=B、z=1；w=0 得 next=A、z=0；非法状态也回 A、输出 0。"
+    }
+  },
+  "l11-output": {
+    "brief": "用 next==C 预约寄存输出（registered output），使新 z 与同一边沿装入的新 state 对齐。",
+    "walkthrough": [
+      {
+        "code": "state <= next;",
+        "explanation": "非阻塞赋值（nonblocking assignment）在边沿读取旧 next，并预约更新状态寄存器。"
+      },
+      {
+        "code": "z <= (next==C);",
+        "explanation": "z 的 D 输入译码 next，因此更新后 z 对应新 state；若换成 state==C，会滞后一拍。"
+      }
+    ],
+    "experiment": {
+      "action": "边沿前令 state=B、next=C、z=0，推进上升沿后在 NBA 更新完成时观察。",
+      "expected": "原写法得到 state=C、z=1；若误写 z<=(state==C)，本沿后 state=C 但 z 仍为 0。"
+    }
+  },
+  "l11-testing": {
+    "brief": "下降沿驱动输入，上升沿之后再观察，避免测试平台（testbench）与 DUT 的采样竞争。",
+    "walkthrough": [
+      {
+        "code": "@(negedge clk) w=seq[i];",
+        "explanation": "在下降沿（falling edge）改变 w，给 DUT 留出半周期稳定时间，避免与上升沿采样抢先后。"
+      },
+      {
+        "code": "@(posedge clk) #1;",
+        "explanation": "等待采样边沿后再延迟一个仿真时间单位，让非阻塞更新（NBA update）完成；这不是额外硬件。"
+      },
+      {
+        "code": "$display(\"state=%b z=%b\",dut.state,z);",
+        "explanation": "层次引用（hierarchical reference）读取 DUT 内部 state，将输入序列对应到已更新状态与输出。"
+      }
+    ],
+    "experiment": {
+      "action": "将 seq 设为 1、1、0、1、1，从复位后每次按此顺序驱动并采样。",
+      "expected": "Moore 模板边沿后的 z 为 0、1、0、0、1；中间 0 必须清掉先前连续 1 的历史。"
+    }
+  },
+  "l12-meaning": {
+    "brief": "ASM 的状态框对应寄存器一周期内的状态，判断分支对应一直工作的组合逻辑（combinational logic）。",
+    "walkthrough": [
+      {
+        "code": "if(!rst_n) state <= A; else state <= next;",
+        "explanation": "状态寄存器（state register）只在边沿更新，所以沿同一 ASM 块穿过判断并不会额外消耗周期。"
+      },
+      {
+        "code": "C: next = w ? C : A;",
+        "explanation": "处于 C 的整个周期中，MUX 持续根据 w 计算 next；只有结束边沿才决定保留 C 或回 A。"
+      },
+      {
+        "code": "assign z = (state == C);",
+        "explanation": "状态输出（state output）在当前 C 的周期有效，离开 C 的边沿之后才随译码变低。"
+      }
+    ],
+    "experiment": {
+      "action": "配合状态 A 起步，采样一次 w=1 进入 C，再保持 w=1 两沿，最后采样 w=0。",
+      "expected": "状态为 C、C、C、A，z 在三个 C 周期为 1；判断 w 本身没有增加中间等待状态。"
+    }
+  },
+  "l12-symbols": {
+    "brief": "状态输出（state output）直接译码 P，条件输出（conditional output）还需要输入 Z 的门控。",
+    "walkthrough": [
+      {
+        "code": "assign CMD1 = P;",
+        "explanation": "one-hot 编码（one-hot encoding）中 P 本身就是处于 P 状态的指示位，可直接驱动状态输出。"
+      },
+      {
+        "code": "assign CMD2 = Q | (P & ~Z);",
+        "explanation": "CMD2 合并状态 Q 的无条件输出与 P 且 Z=0 的条件输出；AND/OR 都在周期中持续计算。"
+      }
+    ],
+    "experiment": {
+      "action": "先置 one-hot 状态 P=1,Q=0，切换 Z=0、1；再置 Q=1,P=0。",
+      "expected": "P 状态下 CMD1=1，CMD2 随 Z 从 1 变 0；Q 状态下 CMD1=0、CMD2 恒为 1。"
+    }
+  },
+  "l12-time": {
+    "brief": "两条 assign 同时生成次态条件（next-state conditions），并不会依次执行两个软件判断。",
+    "walkthrough": [
+      {
+        "code": "assign next_B = in_A & X;",
+        "explanation": "当前处于 A 且 X=1 时，组合门（combinational gate）把 B 的 D 输入条件置 1。"
+      },
+      {
+        "code": "assign next_C = in_A & ~X;",
+        "explanation": "当前处于 A 且 X=0 时选择 C；互补分支（complementary branches）同周期算完，不增加判断周期。"
+      }
+    ],
+    "experiment": {
+      "action": "保持 in_A=1，在时钟边沿之间把 X 从 0 改到 1，观察两条次态线。",
+      "expected": "next_C 从 1 变 0、next_B 从 0 变 1；如果状态寄存器尚未到边沿，当前状态仍为 A。"
+    }
+  },
+  "l12-encoding": {
+    "brief": "localparam 指定同一抽象状态的不同编码（state encoding），从而改变触发器数量与译码结构。",
+    "walkthrough": [
+      {
+        "code": "localparam [1:0] P_BIN=2'b00,Q_BIN=2'b11,R_BIN=2'b10;",
+        "explanation": "二进制编码（binary encoding）用两位保存三个状态；这里 Q=11 是课件约定，并非必须按数字顺序编号。"
+      },
+      {
+        "code": "localparam [2:0] P_HOT=3'b100,Q_HOT=3'b010,R_HOT=3'b001;",
+        "explanation": "独热编码（one-hot encoding）为每个状态分配一位，三态需三个触发器；不能只改常量而忘记扩宽状态变量。"
+      }
+    ],
+    "experiment": {
+      "action": "在完整控制器中分别用两位 binary 和三位 one-hot 状态寄存器表示 P、Q、R。",
+      "expected": "功能状态序列应一致；存储位数由 2 变 3，输出与次态的译码方程也必须随编码重写。"
+    }
+  },
+  "l12-equations": {
+    "brief": "按 P=00、Q=11、R=10 的约定，布尔方程（Boolean equations）实现 ASM 的 D 端与控制输出。",
+    "walkthrough": [
+      {
+        "code": "assign DA = ~A;",
+        "explanation": "合法状态（legal states）中 P 的高位 A=0，下一步进入 Q/R 的 A=1；Q/R 则无条件回 P 的 A=0。"
+      },
+      {
+        "code": "assign DB = ~A & Z;",
+        "explanation": "条件选择（conditional selection）让 P 且 Z=1 时 DB=1，选 Q=11；P 且 Z=0 选 R=10。"
+      },
+      {
+        "code": "assign CMD2 = B | (~A & ~Z);",
+        "explanation": "当前 Q 用 B=1 拉高 CMD2；当前 P 且 Z=0 用另一项拉高，体现条件输出（conditional output）。"
+      }
+    ],
+    "experiment": {
+      "action": "输入当前 A,B=00，先取 Z=0 再取 Z=1，然后试当前 A,B=11。",
+      "expected": "P,Z=0 得 DA,DB=10、CMD2=1；P,Z=1 得 11、CMD2=0；Q 下一态为 00、CMD2=1。"
+    }
+  },
+  "l12-verilog": {
+    "brief": "完整 ASM 模块把状态图、输出条件与非法状态恢复写成可逐行检查的 Verilog。",
+    "walkthrough": [
+      {
+        "code": "P: next=Z?Q:R;",
+        "explanation": "条件选择器（conditional MUX）把 P 状态的一次判断映射为 Q/R 两个目标，当前周期就算出 next。"
+      },
+      {
+        "code": "Q: next=P;",
+        "explanation": "Q 状态无条件返回 P；R 也相同，体现 ASM 状态框之间的一拍转移（one-cycle transition）。"
+      },
+      {
+        "code": "assign CMD2=(state==Q) | ((state==P) & !Z);",
+        "explanation": "状态译码（state decoding）和输入门控合成 CMD2；它在 P 中随 Z 变化，属于 Mealy 类型输出。"
+      }
+    ],
+    "experiment": {
+      "action": "复位到 P，先采样 Z=1 进入 Q，再走一沿回 P；随后采样 Z=0。",
+      "expected": "状态按 P→Q→P→R 转移；P,Z=1 的 CMD2=0，Q 中为 1，P,Z=0 和 R 中分别为 1、0。"
+    }
+  },
+  "l13-bus": {
+    "brief": "Rin 控制写入（load），Rout 控制总线驱动（bus drive），两条路径需要分别理解。",
+    "walkthrough": [
+      {
+        "code": "if(Rin) Q <= Bus;",
+        "explanation": "时钟边沿只有 Rin=1 才把 Bus 装入 Q；Rin=0 表示寄存器保持（register hold）。"
+      },
+      {
+        "code": "assign Bus = Rout ? Q : {8{1'bz}};",
+        "explanation": "Rout=0 输出高阻（high impedance, Z），释放共享总线；Rout=1 才让本寄存器驱动八根线。"
+      }
+    ],
+    "experiment": {
+      "action": "设 Q=8'h55、Rout=0，由另一个驱动器把 Bus 置为 AA，再让 Rin=1 走一沿。",
+      "expected": "Q 在边沿后装入 AA；若没有任何驱动器 Bus 为 Z，不能期待读取到有效旧数据。"
+    }
+  },
+  "l13-swap": {
+    "brief": "三次总线传送（bus transfers）先保存旧 R2，再覆盖 R2，最后从临时寄存器恢复给 R1。",
+    "walkthrough": [
+      {
+        "code": "assign bus = (state==T1) ? R2 :",
+        "explanation": "总线选择器（bus MUX）在 T1 选 R2、T2 选 R1，其余选 R3；同时只选一个来源。"
+      },
+      {
+        "code": "T1: R3 <= bus;",
+        "explanation": "临时寄存器（temporary register）R3 在第一步保存旧 R2，防止第二步覆盖时丢失数据。"
+      },
+      {
+        "code": "T2: R2 <= bus;",
+        "explanation": "T2 边沿将旧 R1 装入 R2，T3 再把 R3 中保存的旧 R2 装入 R1，完成交换（swap）。"
+      }
+    ],
+    "experiment": {
+      "action": "初值 R1=55、R2=AA，依次在 T1、T2、T3 的结束边沿检查目标寄存器。",
+      "expected": "T1 后 R3=AA；T2 后 R2=55；T3 后 R1=AA、R2=55。三步都通过同一条 bus。"
+    }
+  },
+  "l13-sequencer": {
+    "brief": "移位寄存器（shift register）让一个 1 依次出现于 Q[1]、Q[2]、Q[3]，生成三步使能。",
+    "walkthrough": [
+      {
+        "code": "output reg [1:m] Q",
+        "explanation": "升序下标（ascending range）把状态位编号为 1…m；必须按索引连接，不能按常见 [m-1:0] 猜位序。"
+      },
+      {
+        "code": "for(k=m;k>1;k=k-1) Q[k]<=Q[k-1];",
+        "explanation": "过程循环（procedural loop）在同一边沿更新所有级，每级读取旧前一级，因此产生逐拍传递。"
+      },
+      {
+        "code": "Q[1]<=w;",
+        "explanation": "首级采样启动脉冲（start pulse）；w 只高一拍才能注入单个 1，长高电平会注入多个 1。"
+      }
+    ],
+    "experiment": {
+      "action": "m=3 复位后，让 w 只在第一沿为 1，后续三沿保持 0，按 Q[1],Q[2],Q[3] 顺序显示。",
+      "expected": "三位依次 100、010、001、000；若 w 连续两沿为 1，第二沿会得到 110，破坏 one-hot。"
+    }
+  },
+  "l13-modules": {
+    "brief": "三步状态位（one-hot state bits）分别译码总线来源与寄存器写使能，组成交换控制连线。",
+    "walkthrough": [
+      {
+        "code": "assign Rin[3]=RinExt[3] | Q[1];",
+        "explanation": "T1 对应 Q[1]=1，打开 R3 的写使能（write enable）；外部 RinExt 也能请求加载。"
+      },
+      {
+        "code": "assign Rout[2]=Q[1];",
+        "explanation": "T1 让 R2 驱动总线（drive bus），与同拍 Rin[3] 组合完成 R2→R3。"
+      },
+      {
+        "code": "assign Rout[3]=Q[3];",
+        "explanation": "T3 选择 R3 作为总线来源，与 Rin[1] 配合把旧 R2 送回 R1。"
+      }
+    ],
+    "experiment": {
+      "action": "外部 RinExt 全为 0，分别令 Q[1:3]=100、010、001，检查 Rin 与 Rout。",
+      "expected": "依次形成 R2→R3、R1→R2、R3→R1；每步只有一个内部总线来源被使能。"
+    }
+  },
+  "l13-waveform": {
+    "brief": "测试平台（testbench）按每个传送结束边沿取值，区分进入 T1 与完成 T1 两个时刻。",
+    "walkthrough": [
+      {
+        "code": "@(posedge clk) #1; // IDLE -> T1, no transfer yet",
+        "explanation": "接受 start 的边沿仅把状态从 IDLE 推到 T1；非阻塞赋值（NBA）前看到旧 IDLE，不应提早认定 R3 已加载。"
+      },
+      {
+        "code": "$display(\"T1 end R3=%h\",dut.R3);",
+        "explanation": "再走一个上升沿才结束 T1，#1 后读取 R3，避免在 NBA 更新前误报旧值。"
+      },
+      {
+        "code": "$display(\"T3 end R1=%h R2=%h\",dut.R1,dut.R2);",
+        "explanation": "第三个传送边沿完成后检查最终寄存器值（register values），而非只看 done 的组合电平。"
+      }
+    ],
+    "experiment": {
+      "action": "用具备 IDLE/T1/T2/T3 协议的完整 DUT，外部加载 R1=55、R2=AA 后运行该刺激片段。",
+      "expected": "三个打印结果依次为 R3=AA、R2=55、R1=AA/R2=55；start 接受边沿不算第一步完成。"
+    }
+  },
+  "l13-mux": {
+    "brief": "组合 if 链构造总线选择器（bus multiplexer），将每个合法控制码映射到唯一数据来源。",
+    "walkthrough": [
+      {
+        "code": "if(Q==3'b000) BusWires=Data;",
+        "explanation": "空闲状态（idle state）从外部 Data 加载，避免用内部三态驱动器来选择来源。"
+      },
+      {
+        "code": "else if(Q==3'b100) BusWires=R2;",
+        "explanation": "第一传送阶段（transfer phase）选择 R2，下一分支在 Q=010 时选 R1，对应三步交换协议。"
+      },
+      {
+        "code": "else BusWires=R3;",
+        "explanation": "最后 else 保证所有组合路径都有赋值（complete assignment）；但非法控制码也落到 R3，安全性须另行约定。"
+      }
+    ],
+    "experiment": {
+      "action": "固定 Data=11、R1=55、R2=AA、R3=CC，依次设置 Q=000、100、010、001。",
+      "expected": "BusWires 依次为 11、AA、55、CC；Q=110 也会落到 R3，不能把它误当成错误检测。"
+    }
+  },
+  "l13-clean": {
+    "brief": "命名状态（symbolic states）把启动与三步传送写清楚；done 表示 T3 正在进行。",
+    "walkthrough": [
+      {
+        "code": "IDLE: next=start?T1:IDLE;",
+        "explanation": "启动（start）只在 IDLE 接受，进入 T1 后按固定三步运行，避免同时启动多个传送阶段。"
+      },
+      {
+        "code": "T1: next=T2;",
+        "explanation": "每次边沿前进一个状态（state transition）；T1 到 T2 的边沿结束第一笔寄存器传送。"
+      },
+      {
+        "code": "assign done=(state==T3);",
+        "explanation": "此组合 done 在 T3 整个周期为 1，最终 R1 写入发生在 T3 的结束边沿，二者不能混淆。"
+      }
+    ],
+    "experiment": {
+      "action": "在 IDLE 给 start 一拍脉冲，逐周期记录 state、done，并在 T3 结束后检查交换结果。",
+      "expected": "状态依次 T1、T2、T3、IDLE；done 在 T3 为 1，最终数据需等随后结束边沿才全部有效。"
+    }
+  },
+  "l13-practice": {
+    "brief": "用四态比较（case inequality）检查最终值，连未知 X 或高阻 Z 都不能被误判为交换成功。",
+    "walkthrough": [
+      {
+        "code": "#1;",
+        "explanation": "测试平台延迟（testbench delay）把观察点移到当前边沿的非阻塞更新之后，不会生成任何硬件等待单元。"
+      },
+      {
+        "code": "if (dut.R1 !== 8'hAA || dut.R2 !== 8'h55)",
+        "explanation": "四态不等（case inequality, !==）会把 X/Z 当作明确不匹配，避免普通 != 得到 X 后漏报失败。"
+      },
+      {
+        "code": "$display(\"PASS: swap complete\");",
+        "explanation": "只有两个最终寄存器都匹配才打印 PASS；它验证数据交换契约（contract），不等同于只见到 done。"
+      }
+    ],
+    "experiment": {
+      "action": "在 T3 结束边沿后执行检查，先测正确交换结果，再故意断开 R3 加载路径重测。",
+      "expected": "正确实现打印 PASS；R3 未保存旧 R2 时最终 R1 错误或含 X，检查必须打印 FAIL。"
+    }
+  },
+  "l14-bridge": {
+    "brief": "加法器（ALU）、写回选择器（write-back MUX）与寄存器写使能组成一个最小数据通路。",
+    "walkthrough": [
+      {
+        "code": "assign alu_result = a + b;",
+        "explanation": "算术逻辑单元（arithmetic logic unit, ALU）的简化支路做 32 位加法，超出位宽的进位在此被截去。"
+      },
+      {
+        "code": "assign write_data = select_memory ? memory_data : alu_result;",
+        "explanation": "写回多路选择器（write-back multiplexer）根据控制信号选内存数据或 ALU 结果，与交换系统选总线来源同理。"
+      },
+      {
+        "code": "else if(write_enable) q <= write_data;",
+        "explanation": "写使能（write enable）决定上升沿是否提交选择后的数据；没有使能时 q 保持旧值。"
+      }
+    ],
+    "experiment": {
+      "action": "复位后令 a=3、b=4、memory_data=99、write_enable=1；先选 ALU 走一沿，再选 memory 走一沿。",
+      "expected": "q 先得到 7，再得到 99；把 write_enable 改为 0 后，无论选择信号如何切换 q 都保持。"
+    }
+  },
+  "l14-terms": {
+    "brief": "32 位指令编码（instruction encoding）与 64 位数据通路（datapath）可以同时存在，位宽不等于核心数。",
+    "walkthrough": [
+      {
+        "code": "input [31:0] instruction",
+        "explanation": "指令宽度（instruction width）规定一次编码占多少位，不能据此断定处理的数据也只有 32 位。"
+      },
+      {
+        "code": "input [63:0] operand_a,operand_b,",
+        "explanation": "操作数宽度（operand width）为 64 位，相关加法器与 result 也按 64 位连接。"
+      },
+      {
+        "code": "assign opcode = instruction[31:26];",
+        "explanation": "切片提取操作码（opcode），与 64 位加法并行；代码没有给出核心数、发射宽度或制造制程。"
+      }
+    ],
+    "experiment": {
+      "action": "输入 operand_a=64'h0000000100000000、operand_b=1，同时令 instruction 最高六位为 100011。",
+      "expected": "result=64'h0000000100000001，opcode=100011；高 32 位仍参与运算，不会因指令只有 32 位而丢弃。"
+    }
+  },
+  "l14-isa": {
+    "brief": "指令集架构（ISA）约定 opcode/funct 的含义，组合译码（decode）把位串转为控制条件。",
+    "walkthrough": [
+      {
+        "code": "assign rs = instruction[25:21];",
+        "explanation": "字段切片（field extraction）取出源寄存器编号；它是一组接线，不是读取寄存器数据本身。"
+      },
+      {
+        "code": "assign is_add = (opcode==6'b000000) & (funct==6'b100000);",
+        "explanation": "MIPS 风格的 add 同时检查 opcode 与 funct，单独看到 opcode=0 还不能认定是加法。"
+      },
+      {
+        "code": "assign is_lw = (opcode==6'b100011);",
+        "explanation": "lw 操作码使加载控制条件（load decode）有效；实际访存、异常与写回仍需要其余数据通路和控制器。"
+      }
+    ],
+    "experiment": {
+      "action": "将 instruction 设为 32'h012A4020，再改为 32'h8D090004，观察两个译码输出。",
+      "expected": "第一条 is_add=1、is_lw=0、rs=9；第二条 is_add=0、is_lw=1、rs=8。"
+    }
+  },
+  "l14-machine": {
+    "brief": "一组切片（part-selects）把 32 位机器指令拆成操作码、寄存器编号与功能字段。",
+    "walkthrough": [
+      {
+        "code": "assign opcode=instruction[31:26];",
+        "explanation": "操作码（opcode）占最高六位；Verilog 连线提取字段，并不会按十进制数重新解释整条指令。"
+      },
+      {
+        "code": "assign rs=instruction[25:21];",
+        "explanation": "源寄存器字段（source register field）rs 是五位索引；rt、rd 同理，只是所在位段不同。"
+      },
+      {
+        "code": "assign funct=instruction[5:0];",
+        "explanation": "功能码（function code）占最低六位；只有结合具体 ISA 格式，才知道该字段对当前指令是否有效。"
+      }
+    ],
+    "experiment": {
+      "action": "输入 instruction=32'h012A4020，逐一检查六个输出字段。",
+      "expected": "opcode=0、rs=9、rt=10、rd=8、shamt=0、funct=32；在 MIPS 风格 R 型格式中对应 add。"
+    }
+  },
+  "l14-software": {
+    "brief": "这段多周期 RTL 片段用加载、相加、保存串起 a=b+c 的一次可能实现，帮助把软件意图映射到寄存器传送。",
+    "walkthrough": [
+      {
+        "code": "LOAD_B: rb <= memory_data;",
+        "explanation": "加载（load）阶段把内存接口当前数据采样到 rb；此例假定数据已有效，真实系统还要处理握手与等待。"
+      },
+      {
+        "code": "ADD: result <= rb + rc;",
+        "explanation": "算术阶段（arithmetic stage）读取此前保存的 rb、rc，把和写入 result；不是在一行中自动完成两次访存。"
+      },
+      {
+        "code": "STORE: write_buffer <= result;",
+        "explanation": "保存（store）阶段暂存计算结果；write_buffer 不是完整内存写接口，此片段不声称实现实际编译器或 CPU。"
+      }
+    ],
+    "experiment": {
+      "action": "外部控制器依次安排 LOAD_B、LOAD_C、ADD、STORE；前两沿令 memory_data 分别为 7、5。",
+      "expected": "rb=7、rc=5，ADD 结束后 result=12，STORE 结束后 write_buffer=12；阶段顺序承载数据依赖（dependency）。"
+    }
+  },
+  "l14-interface": {
+    "brief": "同一 MUX 接口（interface）先规定选择行为，再允许综合器选择具体门级实现（implementation）。",
+    "walkthrough": [
+      {
+        "code": "module mux2(input A,B,S,output Y);",
+        "explanation": "模块接口（module interface）明确两路数据、一位选择与一位输出，调用方只需遵守这个行为约定。"
+      },
+      {
+        "code": "assign Y=S?B:A;",
+        "explanation": "条件运算符（conditional operator）在 S=0 选 A，S=1 选 B；二态功能可用 AND/OR/NOT 等价表达。"
+      }
+    ],
+    "experiment": {
+      "action": "固定 A=0、B=1，分别令 S=0、1；再把 A、B 对调，重复两次。",
+      "expected": "前两次 Y=0、1；对调后 Y=1、0。功能等价不保证不同写法的实际布局与延迟完全相同。"
+    }
+  },
+  "l14-components": {
+    "brief": "lw 数据通路先符号扩展（sign extension）偏移，再求有效地址，另一路并行生成顺序 PC。",
+    "walkthrough": [
+      {
+        "code": "assign offset = {{16{instruction[15]}},instruction[15:0]};",
+        "explanation": "复制符号位（sign-bit replication）把 16 位偏移扩成 32 位，保留负数含义，不能简单补零。"
+      },
+      {
+        "code": "assign effective_address = base + offset;",
+        "explanation": "有效地址（effective address）由基址加带符号偏移的位模式组成；这是访存地址而不是已取出的数据。"
+      },
+      {
+        "code": "assign sequential_pc = pc + 32'd4;",
+        "explanation": "固定 32 位指令的顺序程序计数器（program counter, PC）按字节地址前进 4；与数据加载地址分开计算。"
+      }
+    ],
+    "experiment": {
+      "action": "令 base=32'h1000、instruction[15:0]=16'hFFFC、pc=32'h00400000。",
+      "expected": "offset=32'hFFFFFFFC，即 −4；effective_address=0FFC，sequential_pc=00400004。内存返回数据随后走写回路径。"
+    }
+  },
+  "l15-metric": {
+    "brief": "这段非综合测试平台（testbench）按相同起点统计两套 DUT 完成同一工作所需的周期，再比较响应时间。",
+    "walkthrough": [
+      {
+        "code": "cycle = cycle+1;",
+        "explanation": "仿真周期计数（cycle count）每个上升沿加一；done_a、done_b 须在观察边沿之前稳定，避免测试竞争。"
+      },
+      {
+        "code": "if(done_a && finish_a==0) finish_a=cycle;",
+        "explanation": "首次完成（first completion）时锁存周期数，后续 done 保持高电平也不会覆盖完成时间。"
+      },
+      {
+        "code": "$display(\"A/B performance=%0f\",1.0*finish_b/finish_a);",
+        "explanation": "同周期长度、同一工作量下，性能比（performance ratio）是 B 所用周期除以 A 所用周期，不是反过来。"
+      }
+    ],
+    "experiment": {
+      "action": "在完整 testbench 中让 done_a 在第 10 个观察边沿前有效、done_b 在第 15 个观察边沿前有效。",
+      "expected": "finish_a=10、finish_b=15，打印 A/B performance=1.5；这是单任务响应时间比较，尚未统计吞吐率（throughput）。"
+    }
+  },
+  "l15-clock": {
+    "brief": "理想时钟（ideal clock）测试平台用 125ps 半周期产生 4GHz 仿真时钟，区分 tick 数与每个 tick 的长度。",
+    "walkthrough": [
+      {
+        "code": "`timescale 1ps/1ps",
+        "explanation": "时间单位（time unit）与精度都是 ps，因此下面 #125 明确表示 125ps，而不是默认的 ns。"
+      },
+      {
+        "code": "always #125 clk=~clk;",
+        "explanation": "每次翻转占半周期（half-period），完整周期为 250ps，频率为 1/250ps=4GHz；此 # 代码不可综合。"
+      },
+      {
+        "code": "always @(posedge clk) edges=edges+1;",
+        "explanation": "只数上升沿（rising edges），在 125、375、625、875ps 四次加一，不能把八次翻转误算成八周期。"
+      }
+    ],
+    "experiment": {
+      "action": "在完整 Verilog 仿真器运行 1000ps，再把 #125 改为 #250 并同步把显示公式中的 250.0 改为 500.0。",
+      "expected": "原版打印 edges=4、frequency_GHz=4；改后 edges=2、frequency_GHz=2。这里是理想刺激，不代表器件可达到此频率。"
+    }
+  },
+  "l15-equation": {
+    "brief": "非综合 Verilog 测试平台把动态指令数（instruction count）、CPI 与频率转成周期数和 CPU 时间。",
+    "walkthrough": [
+      {
+        "code": "instructions=6.0e9;",
+        "explanation": "动态指令数（dynamic instruction count）统计实际执行次数；real 常量避免把 60 亿误塞进有符号 32 位 integer。"
+      },
+      {
+        "code": "cycles=instructions*1.5;",
+        "explanation": "每条指令平均周期（cycles per instruction, CPI）为 1.5，乘 IC 得总周期 90 亿，而非秒数。"
+      },
+      {
+        "code": "cycles/frequency_hz",
+        "explanation": "频率（clock rate）单位为周期/秒，总周期除以它才得到 CPU 秒数；此程序计算给定模型，不运行 60 亿条指令。"
+      }
+    ],
+    "experiment": {
+      "action": "先运行给定参数，再只把 frequency_hz 从 3.0e9 改为 1.5e9，其他值保持。",
+      "expected": "总周期都为 9.0e9；CPU_seconds 从 3 变成 6，降低频率不会自动改变已给定的 IC 与 CPI。"
+    }
+  },
+  "l15-mix": {
+    "brief": "组合统计电路（combinational statistics circuit）按三类指令的 1/2/3 周期代价累计 IC 与总周期。",
+    "walkthrough": [
+      {
+        "code": "assign instructions = {2'b00,a}+{2'b00,b}+{2'b00,c};",
+        "explanation": "先零扩展（zero extension）再相加，用 10 位容纳最大 765 条指令；此模块只统计，不执行这些指令。"
+      },
+      {
+        "code": "assign cycles = {3'b000,a}+({3'b000,b}<<1)",
+        "explanation": "a 每条代价 1，b 左移一位得到 2b；扩成 11 位再移位（shift）可保留最大输入的高位。"
+      },
+      {
+        "code": "+({3'b000,c}<<1)+{3'b000,c};",
+        "explanation": "c 的代价为 3，用 2c+c 实现；平均 CPI（weighted CPI）应由最终 cycles/instructions 求得。"
+      }
+    ],
+    "experiment": {
+      "action": "输入 a=2、b=1、c=2；再测试 a=b=c=255，检查两路输出与位宽。",
+      "expected": "第一组 instructions=5、cycles=10、平均 CPI=2；最大输入时 instructions=765、cycles=1530，无高位截断。"
+    }
+  },
+  "l15-factors": {
+    "brief": "非综合测试平台同时改变 IC 与 CPI，按完整时间模型比较，避免只看减少的指令数量。",
+    "walkthrough": [
+      {
+        "code": "old_ic=100.0; old_cpi=2.0; frequency=1.0e9;",
+        "explanation": "固定工作量（fixed workload）先给出旧模型与共同频率，原周期数为 100×2=200。"
+      },
+      {
+        "code": "new_ic=old_ic*0.8; new_cpi=old_cpi*1.5;",
+        "explanation": "新模型指令少 20%，但平均 CPI 增加 50%；两因素相乘（factor product）后是 80×3=240 周期。"
+      },
+      {
+        "code": "(new_ic*new_cpi/frequency)/(old_ic*old_cpi/frequency)",
+        "explanation": "时间比（execution-time ratio）同时保留 IC、CPI 与频率，此例共同频率约去后比值为 1.2。"
+      }
+    ],
+    "experiment": {
+      "action": "运行原例，再把 new_cpi=old_cpi*1.5 中的 1.5 改为 1.0。",
+      "expected": "原例 old_cycles=200、new_cycles=240、time_ratio=1.2，反而慢 20%；改后为 160 周期、比值 0.8。"
+    }
+  },
+  "l15-amdahl": {
+    "brief": "固定工作量、同一时钟下，用整数周期模型展示 Amdahl 定律（Amdahl's law）中的未优化部分。",
+    "walkthrough": [
+      {
+        "code": "integer unchanged_cycles=40,improvable_cycles=60;",
+        "explanation": "把原 100 周期分成不可改的 40 与可改的 60，固定串行工作量（serial fixed workload）是比较前提。"
+      },
+      {
+        "code": "new_cycles=unchanged_cycles+improvable_cycles/speedup_part;",
+        "explanation": "只把可优化部分除以局部加速比（local speedup）；此整数示例选 3 或 6 可整除，任意参数需处理截断。"
+      },
+      {
+        "code": "100.0/new_cycles",
+        "explanation": "整体加速比（overall speedup）用原总周期除以新总周期；未优化的 40 周期限制最终收益。"
+      }
+    ],
+    "experiment": {
+      "action": "运行 speedup_part=3，再改为 6；每次记录 new_cycles 与 overall_speedup。",
+      "expected": "3 倍局部加速得到 60 周期、整体约 1.667 倍；6 倍得到 50 周期、整体 2 倍，上限趋近 100/40=2.5 倍。"
+    }
+  },
+  "l15-mips": {
+    "brief": "非综合测试平台让两段完成同一工作的代码拥有不同指令混合，复现 MIPS 更高却更慢的反例。",
+    "walkthrough": [
+      {
+        "code": "cycles_a=5.0e6+1.0e6*2+1.0e6*3;",
+        "explanation": "A 的三类动态指令（dynamic instructions）共 700 万条，按 1/2/3 周期计价得到 1000 万总周期。"
+      },
+      {
+        "code": "seconds_a=cycles_a/1.0e9; seconds_b=cycles_b/1.0e9;",
+        "explanation": "相同 1GHz 频率（clock rate）下，A 需 10ms，B 需 15ms；先固定任务再比较执行时间。"
+      },
+      {
+        "code": "12.0e6/seconds_b/1.0e6",
+        "explanation": "每秒百万条指令（million instructions per second, MIPS）还受指令数影响，B 的 800MIPS 不能推翻其耗时更长。"
+      }
+    ],
+    "experiment": {
+      "action": "运行代码，同时记录 A/B 的 seconds 与 MIPS，而不是只选择 MIPS 最大的一行。",
+      "expected": "A 为 0.010s、700MIPS；B 为 0.015s、800MIPS。相同工作假设下 A 的性能是 B 的 1.5 倍。"
+    }
+  },
+  "l15-review": {
+    "brief": "用有单位的变量名与自动检查（self-checking testbench）复算性能，确保先算周期再换成秒。",
+    "walkthrough": [
+      {
+        "code": "total_cycles=ic*cpi;",
+        "explanation": "总周期（total cycles）由动态 IC 乘 CPI 得到；此处 6.0e9×1.5=9.0e9，尚未使用时间单位。"
+      },
+      {
+        "code": "cpu_seconds=total_cycles/frequency_hz;",
+        "explanation": "频率用 Hz（cycles/second）存储，除法结果才是 CPU 时间（CPU time），不能把 GHz 数字 3 直接代入。"
+      },
+      {
+        "code": "if(cpu_seconds < 2.999 || cpu_seconds > 3.001)",
+        "explanation": "容差检查（tolerance check）避免 real 浮点比较过于严格；这个检查验证给定公式与单位，不验证真实处理器。"
+      }
+    ],
+    "experiment": {
+      "action": "先运行原参数确认 PASS；随后将 frequency_hz 误写为 3.0，观察检查输出并分析差几个数量级。",
+      "expected": "原例 CPU_seconds=3 并打印 PASS；误写后时间为 3.0e9 秒并打印 FAIL，提示 GHz 到 Hz 的十亿倍单位错误。"
+    }
+  }
+};
+for (const lesson of [lesson8,lesson9,lesson11,lesson12,lesson13,lesson14,lesson15]) {
+ for (const section of lesson.sections) {
+  if (codeFirstExamples[section.id]) section.code = codeFirstExamples[section.id];
+  Object.assign(section, codeFirstNotes[section.id]);
+ }
+}
+
 export const lateLessons = [lesson8,lesson9,lesson10,lesson11,lesson12,lesson13,lesson14,lesson15];
