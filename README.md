@@ -1,21 +1,25 @@
 # Circuit Lab · XJTLU EEE339 · 2026–2027
 
-为西交利物浦大学（XJTLU）**2026–2027 学年（26–27）EEE339** 课程整理的个人 Verilog 跟练网站。围绕代码串联简短讲解与练习，每讲内部按题目翻页；中文辅助理解，重点术语附英文，以便衔接全英文教学。
+适配西交利物浦大学（XJTLU）**2026–2027 学年（26–27）EEE339** 课程的个人 Verilog 跟练网站。围绕代码串联简短讲解与练习，每讲内部按题目翻页；中文辅助理解，重点术语附英文，以便衔接全英文教学。
 
 | 课程信息 | 内容 |
 | --- | --- |
 | 学校 | 西交利物浦大学 · Xi’an Jiaotong-Liverpool University（XJTLU） |
 | 课程代码 | EEE339 |
-| 课程名称 | Digital System Design with HDL (I) |
+| 课程名称 | Digital System Design with HDL |
 | 学年 | 2026–2027（26–27） |
+| 学分与学期 | 5 学分 · 第一学期（SEM1） |
 | 授课语言 | 英语（English）；本站提供中文辅助讲解与英文重点术语 |
-| 学习内容 | Verilog 代码、数字电路与系统设计、对应习题和交互实验 |
+
+课程围绕 Verilog 逻辑电路与处理器设计，涵盖分层设计（hierarchical design）、体系结构与性能分析，以及仿真（simulation）、综合（synthesis）和验证（verification）。
 
 本站是个人学习辅助项目，并非 XJTLU 官方课程网站。课程安排与考核要求以学校和授课教师发布的信息为准。
 
 内容基于 12 份 EEE339 原课件、313 页教学材料整理；第 1–9、11–15 讲已整理，第 10 讲等待原课件补充。合并的 12–13、14–15 讲按内容主题划分学习单元，保留原 PDF 页码；后续可继续增补或更新。
 
-在线访问：[Circuit Lab](https://choneychen.github.io/eee339-circuit-lab/)
+**在线访问：[Circuit Lab](https://choneychen.github.io/eee339-circuit-lab/) · 代码与学习资源：[GitHub 仓库](https://github.com/ChoneyChen/eee339-circuit-lab)**
+
+如果觉得好，给作者一个 Star 标星，以示鼓励吧！
 
 目前包含 **110 个知识小节、110 道随手检验、119 道练习，共 229 个题目分页**；40 道可运行组合代码题的参考答案已通过全部 858 组课程向量。
 

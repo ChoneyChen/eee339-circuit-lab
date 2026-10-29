@@ -77,3 +77,28 @@
 @media(max-width:1000px){.mobile-lesson-note{display:block;margin-top:26px}.mobile-lesson-note summary{cursor:pointer;color:#698058;font-size:12px}.mobile-lesson-note textarea{margin-top:16px}}
 @media(max-width:760px){.question-pager{gap:8px;margin:18px 0;grid-template-columns:1fr 1fr}.question-jump{grid-column:1/-1;grid-row:1;text-align:left;flex-direction:row;align-items:center;gap:12px}.question-jump>span{white-space:nowrap;font-size:10px}.question-jump small{display:none}.question-jump select{flex:1;width:0;font-size:10px}.question-pager .btn{font-size:11px;min-height:39px}.question-page .section-meta{gap:6px;flex-wrap:wrap}.question-page .section-meta .eyebrow{flex:1;font-size:8px;letter-spacing:.4px;white-space:nowrap}.question-page .source-btn{font-size:9px}.question-page .section-meta .icon-btn{width:25px;height:25px}.question-reader .reader-head .tag{font-size:9px}.question-reader .guided-intro{font-size:11px}.question-page .inline-practice-heading{align-items:flex-start}.lecture-finish{flex-direction:column;align-items:start;padding:20px}.lecture-finish .btn-row{width:100%}.question-page .section-actions{align-items:start}}
 @media print{.question-pager,.question-toc,.lecture-finish,.mobile-lesson-note{display:none}}
+
+/* Course context and a small, persistent link to the open-source project. */
+#topbar{gap:18px}
+.breadcrumb{min-width:0}
+.breadcrumb>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.breadcrumb>a,.breadcrumb>span{flex-shrink:0}
+.top-actions{flex-shrink:0;gap:14px}
+.project-link{display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid #dce6d5;background:#f5f8f0;border-radius:7px;color:var(--green);flex-shrink:0;line-height:1.6}
+.project-link:hover{background:#eaf2e3;border-color:#b6cba5}
+.project-link>svg{width:17px;height:17px}
+.project-link-copy{display:flex;flex-direction:column;gap:2px}
+.project-link-copy strong{font-size:11px;font-weight:550}
+.project-link-copy strong>span{font-size:10px;margin-left:5px;color:#799268}
+.project-link-copy small{font-size:9px;color:#7d8c70}
+.project-star{font-size:22px;line-height:1;color:#a3874d}
+.module-brief{display:flex;align-items:center;justify-content:space-between;gap:20px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:18px 22px;margin-top:18px}
+.module-brief h2{font-size:15px;margin:7px 0 5px;letter-spacing:0;line-height:1.6}
+.module-brief p{font-size:11px;color:#7c8874;margin:0}
+.module-facts{display:flex;gap:7px;flex-shrink:0;flex-wrap:wrap}
+.module-facts span{font-size:10px;color:#68815a;background:#f0f5ea;border-radius:5px;padding:6px 9px}
+@media(max-width:1440px){.top-actions .status{display:none}}
+@media(max-width:1200px){.top-actions .avatar{display:none}.module-brief{align-items:flex-start}.module-facts{flex-direction:column}}
+@media(max-width:1100px){.top-actions .search-trigger span,.top-actions .search-trigger kbd{display:none}.top-actions .search-trigger{padding:8px}}
+@media(max-width:760px){#topbar{height:auto;min-height:100px;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"breadcrumb search" "project project";gap:9px 14px;padding:10px 19px}.breadcrumb{grid-area:breadcrumb}.top-actions{display:contents}.search-trigger{grid-area:search;justify-self:end}.project-link{grid-area:project;justify-self:end;padding:5px 9px;max-width:100%;gap:8px}.project-link-copy strong{font-size:10px}.project-link-copy small{font-size:9px}.project-star{font-size:20px}.module-brief{flex-direction:column;padding:17px;gap:12px}.module-facts{flex-direction:row}.module-brief h2{font-size:14px}.module-brief p{font-size:11px}.code-centered{scroll-margin-top:130px}}
+@media print{.project-link{display:none}}
